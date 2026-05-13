@@ -20,6 +20,7 @@ const AppointmentList = () => {
   const [toDate, setToDate] = useState('');
   const [clinicFilter, setClinicFilter] = useState('');
   const [followupFilter, setFollowupFilter] = useState('');
+  const [loading, setLoading] = useState(true);
   
   // Pagination State
   const [recordsPerPage, setRecordsPerPage] = useState(10);
@@ -30,7 +31,8 @@ const AppointmentList = () => {
   useEffect(() => {
     const fetchAppointments = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/appointments');
+        setLoading(true);
+        const response = await axios.get(`${API_URL}/appointments`);
         // Map backend models to match frontend expectations if necessary
         const data = response.data.map(a => ({
           id: a.id,

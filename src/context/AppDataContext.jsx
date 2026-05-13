@@ -1,8 +1,8 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
+import API_URL from '../config';
 
 const AppDataContext = createContext();
-const API_URL = 'http://localhost:8000';
 
 export const useAppData = () => useContext(AppDataContext);
 

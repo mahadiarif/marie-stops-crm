@@ -55,7 +55,7 @@ const AppointmentForm = () => {
       try {
         if (editId) {
           // Fetch Appointment
-          const apptRes = await axios.get(`http://localhost:8000/appointments`);
+          const apptRes = await axios.get(`${API_URL}/appointments`);
           const appt = apptRes.data.find(a => a.id === parseInt(editId));
           
           if (appt) {
@@ -74,7 +74,7 @@ const AppointmentForm = () => {
           }
         } else if (clientId) {
           // Fetch Client only
-          const clientRes = await axios.get(`http://localhost:8000/clients`);
+          const clientRes = await axios.get(`${API_URL}/clients`);
           const client = clientRes.data.find(c => c.id === parseInt(clientId));
           if (client) {
             setClientName(client.name);
@@ -124,7 +124,7 @@ const AppointmentForm = () => {
         console.log("Updating appointment:", editId, data);
         alert("Update functionality is being implemented. For now, data is logged.");
       } else {
-        await axios.post('http://localhost:8000/appointments', data);
+        await axios.post(`${API_URL}/appointments`, data);
       }
       
       setSuccessMessage(true);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_URL from '../config';
 import { 
   Users, 
   Calendar, 
@@ -31,10 +32,10 @@ const Dashboard = () => {
       try {
         setLoading(true);
         const [apptsRes, callsRes, clientsRes, waiversRes] = await Promise.all([
-          axios.get('http://localhost:8000/appointments'),
-          axios.get('http://localhost:8000/call-logs'),
-          axios.get('http://localhost:8000/clients'),
-          axios.get('http://localhost:8000/waivers')
+          axios.get(`${API_URL}/appointments`),
+          axios.get(`${API_URL}/call-logs`),
+          axios.get(`${API_URL}/clients`),
+          axios.get(`${API_URL}/waivers`)
         ]);
 
         const appts = apptsRes.data;
