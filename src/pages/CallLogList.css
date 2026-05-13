@@ -1,0 +1,8 @@
+/* Styling for CallLogList reusing common list styles */
+.font-medium {
+  font-weight: 500;
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
