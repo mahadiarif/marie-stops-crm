@@ -4,12 +4,16 @@ import datetime
 from sqlalchemy.orm import Session
 from database import engine, SessionLocal, Base
 import models
+import auth
 
 def seed_data():
-    # 1. Delete existing database file to start fresh
-    if os.path.exists("crm.db"):
-        print("Removing existing database...")
-        os.remove("crm.db")
+    # 1. Try to delete existing database file to start fresh
+    try:
+        if os.path.exists("crm.db"):
+            print("Removing existing database...")
+            os.remove("crm.db")
+    except PermissionError:
+        print("Database is in use, skipping deletion (will add users to existing DB)...")
 
     # 2. Recreate tables
     print("Creating tables...")
@@ -199,6 +203,30 @@ def seed_data():
             )
         ]
         db.add_all(waivers)
+
+        # 8. Seed Users
+        print("Seeding users...")
+        user_data = [
+            ("admin", "admin@mariestopes.org", "admin123", "admin"),
+            ("manager", "manager@mariestopes.org", "manager123", "manager"),
+            ("staff", "staff@mariestopes.org", "staff123", "staff"),
+        ]
+
+        for username, email, password, role in user_data:
+            # Check if user already exists
+            existing_user = db.query(models.User).filter(models.User.username == username).first()
+            if not existing_user:
+                new_user = models.User(
+                    username=username,
+                    email=email,
+                    password_hash=auth.hash_password(password),
+                    role=role,
+                    is_active=True
+                )
+                db.add(new_user)
+                print(f"  Created user: {username}")
+            else:
+                print(f"  User {username} already exists, skipping...")
 
         db.commit()
         print("Seeding completed successfully!")

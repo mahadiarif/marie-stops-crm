@@ -1,7 +1,13 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, Enum
 from sqlalchemy.orm import relationship
 from database import Base
 import datetime
+import enum
+
+class RoleEnum(str, enum.Enum):
+    admin = "admin"
+    manager = "manager"
+    staff = "staff"
 
 class Client(Base):
     __tablename__ = "clients"
@@ -63,3 +69,14 @@ class Waiver(Base):
     paid_amount = Column(Integer)
     waiver_code = Column(String)
     remarks = Column(Text)
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+    password_hash = Column(String)
+    role = Column(Enum(RoleEnum), default=RoleEnum.staff)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)

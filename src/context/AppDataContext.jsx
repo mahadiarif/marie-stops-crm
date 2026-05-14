@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import axios from 'axios';
+import axiosClient from '../api/axiosClient';
 import API_URL from '../config';
 
 const AppDataContext = createContext();
@@ -40,7 +40,7 @@ export const AppDataProvider = ({ children }) => {
     const fetchData = async () => {
       try {
         // Fetch Settings
-        const settingsRes = await axios.get(`${API_URL}/settings`);
+        const settingsRes = await axiosClient.get(`/settings`);
         const settingsData = settingsRes.data;
         
         setClinics(settingsData.filter(s => s.category === 'clinic').map(s => s.value));
@@ -54,7 +54,7 @@ export const AppDataProvider = ({ children }) => {
         setWaiverServices(settingsData.filter(s => s.category === 'waiverService').map(s => s.value));
 
         // Fetch Waivers
-        const waiversRes = await axios.get(`${API_URL}/waivers`);
+        const waiversRes = await axiosClient.get(`/waivers`);
         setWaivers(waiversRes.data.map(w => ({
           id: w.id,
           date: w.date,
@@ -70,11 +70,11 @@ export const AppDataProvider = ({ children }) => {
         })));
 
         // Fetch Clients
-        const clientsRes = await axios.get(`${API_URL}/clients`);
+        const clientsRes = await axiosClient.get(`/clients`);
         setClients(clientsRes.data);
 
         // Fetch Call Logs
-        const logsRes = await axios.get(`${API_URL}/call-logs`);
+        const logsRes = await axiosClient.get(`/call-logs`);
         setCallLogs(logsRes.data.map(l => ({
           id: l.id,
           callerName: l.caller_name,
@@ -90,7 +90,7 @@ export const AppDataProvider = ({ children }) => {
         })));
 
         // Fetch Appointments
-        const apptsRes = await axios.get(`${API_URL}/appointments`);
+        const apptsRes = await axiosClient.get(`/appointments`);
         setAppointments(apptsRes.data.map(a => ({
           id: a.id,
           name: a.client_name,
@@ -112,7 +112,7 @@ export const AppDataProvider = ({ children }) => {
   const addGenericItem = (category, setter, state) => async (newItem) => {
     if (newItem && !state.includes(newItem)) {
       try {
-        await axios.post(`${API_URL}/settings?category=${encodeURIComponent(category)}&value=${encodeURIComponent(newItem)}`);
+        await axiosClient.post(`/settings?category=${encodeURIComponent(category)}&value=${encodeURIComponent(newItem)}`);
         setter([...state, newItem]);
       } catch (error) {
         console.error(`Error adding ${category}:`, error);
@@ -125,11 +125,11 @@ export const AppDataProvider = ({ children }) => {
   const removeGenericItem = (category, setter, state) => async (itemToRemove) => {
     try {
       // Fetch current settings to get the correct ID
-      const settingsRes = await axios.get(`${API_URL}/settings`);
+      const settingsRes = await axiosClient.get(`/settings`);
       const item = settingsRes.data.find(s => s.category === category && s.value === itemToRemove);
-      
+
       if (item) {
-        await axios.delete(`${API_URL}/settings/${item.id}`);
+        await axiosClient.delete(`/settings/${item.id}`);
       }
       setter(state.filter(i => i !== itemToRemove));
     } catch (error) {
@@ -140,7 +140,7 @@ export const AppDataProvider = ({ children }) => {
 
   const addWaiver = async (waiverData) => {
     try {
-      const response = await axios.post(`${API_URL}/waivers`, {
+      const response = await axiosClient.post(`/waivers`, {
         date: waiverData.date,
         center: waiverData.center,
         client_id_code: waiverData.clientId,

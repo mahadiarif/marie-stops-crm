@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  UserPlus, 
-  PhoneCall, 
-  Users, 
-  Settings, 
+import {
+  LayoutDashboard,
+  UserPlus,
+  PhoneCall,
+  Users,
+  Settings,
   LogOut,
   Bell,
   Search,
@@ -18,13 +18,15 @@ import {
   HelpCircle,
   FileText
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import './Layout.css';
 
 const Layout = () => {
   const navigate = useNavigate();
+  const { user, logout, hasRole } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  
+
   const notificationsRef = useRef(null);
   const profileRef = useRef(null);
 
@@ -42,11 +44,38 @@ const Layout = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Listen for auth errors and redirect to login
+  useEffect(() => {
+    const handleAuthError = () => {
+      logout();
+      navigate('/login');
+    };
+    window.addEventListener('auth-error', handleAuthError);
+    return () => window.removeEventListener('auth-error', handleAuthError);
+  }, [logout, navigate]);
+
   const notifications = [
     { id: 1, title: 'New Appointment', desc: 'Nusrat Jahan scheduled for Dhanmondi', time: '5m ago', unread: true },
     { id: 2, title: 'Follow-up Due', desc: 'Call due for Farhana Islam', time: '1h ago', unread: true },
     { id: 3, title: 'System Update', desc: 'Backend sync completed successfully', time: '2h ago', unread: false },
   ];
+
+  const handleLogout = () => {
+    if (window.confirm('Are you sure you want to logout?')) {
+      logout();
+      navigate('/login');
+    }
+  };
+
+  const getUserInitials = () => {
+    if (!user) return '?';
+    return user.username.substring(0, 2).toUpperCase();
+  };
+
+  const getRoleLabel = () => {
+    if (!user) return 'User';
+    return user.role.charAt(0).toUpperCase() + user.role.slice(1);
+  };
 
   return (
     <div className="app-container">
@@ -81,29 +110,33 @@ const Layout = () => {
           </NavLink>
 
           <div className="nav-group">WAIVER</div>
-          
+
           <NavLink to="/waiver" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             <ClipboardList size={20} />
             <span>Waiver List</span>
           </NavLink>
-          
+
           <div className="nav-group">ANALYTICS</div>
 
-          <NavLink to="/reports" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            <FileText size={20} />
-            <span>Reports</span>
-          </NavLink>
-          
+          {hasRole(['admin', 'manager']) && (
+            <NavLink to="/reports" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+              <FileText size={20} />
+              <span>Reports</span>
+            </NavLink>
+          )}
+
           <div className="nav-group">SYSTEM</div>
-          
-          <NavLink to="/settings" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            <Settings size={20} />
-            <span>Settings</span>
-          </NavLink>
+
+          {hasRole('admin') && (
+            <NavLink to="/settings" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+              <Settings size={20} />
+              <span>Settings</span>
+            </NavLink>
+          )}
         </nav>
-        
+
         <div className="sidebar-footer">
-          <button className="logout-btn">
+          <button className="logout-btn" onClick={handleLogout}>
             <LogOut size={20} />
             <span>Logout</span>
           </button>
@@ -161,14 +194,14 @@ const Layout = () => {
 
             {/* Profile Dropdown */}
             <div className="dropdown-container" ref={profileRef}>
-              <div 
-                className={`user-profile ${showProfileMenu ? 'active' : ''}`} 
+              <div
+                className={`user-profile ${showProfileMenu ? 'active' : ''}`}
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
               >
-                <div className="user-avatar">SA</div>
+                <div className="user-avatar">{getUserInitials()}</div>
                 <div className="user-info">
-                  <span className="user-name">Super Admin</span>
-                  <span className="user-role">Administrator</span>
+                  <span className="user-name">{user?.username}</span>
+                  <span className="user-role">{getRoleLabel()}</span>
                 </div>
                 <ChevronDown size={16} className={`chevron ${showProfileMenu ? 'rotate' : ''}`} />
               </div>
@@ -179,9 +212,11 @@ const Layout = () => {
                     <button className="menu-item" onClick={() => { navigate('/profile'); setShowProfileMenu(false); }}>
                       <User size={16} /> <span>My Profile</span>
                     </button>
-                    <button className="menu-item" onClick={() => { navigate('/settings'); setShowProfileMenu(false); }}>
-                      <Settings size={16} /> <span>Account Settings</span>
-                    </button>
+                    {hasRole('admin') && (
+                      <button className="menu-item" onClick={() => { navigate('/settings'); setShowProfileMenu(false); }}>
+                        <Settings size={16} /> <span>Account Settings</span>
+                      </button>
+                    )}
                     <button className="menu-item" onClick={() => setShowProfileMenu(false)}>
                       <Shield size={16} /> <span>Security</span>
                     </button>
@@ -191,12 +226,7 @@ const Layout = () => {
                     <button className="menu-item" onClick={() => setShowProfileMenu(false)}>
                       <HelpCircle size={16} /> <span>Help Center</span>
                     </button>
-                    <button className="menu-item text-danger" onClick={() => {
-                      if(window.confirm('Are you sure you want to logout?')) {
-                        setShowProfileMenu(false);
-                        // Add logout logic here if needed
-                      }
-                    }}>
+                    <button className="menu-item text-danger" onClick={handleLogout}>
                       <LogOut size={16} /> <span>Logout</span>
                     </button>
                   </div>
@@ -205,7 +235,7 @@ const Layout = () => {
             </div>
           </div>
         </header>
-        
+
         <div className="content-area">
           <Outlet />
         </div>
