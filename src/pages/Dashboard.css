@@ -214,6 +214,101 @@
   color: var(--primary);
 }
 
+/* Filter Section Styles */
+.dashboard-filters-card {
+  background: white;
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.filters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.filter-select, .filter-input {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background-color: #f8fafc;
+  font-size: 0.875rem;
+  color: #1e293b;
+  appearance: none;
+  transition: all 0.2s;
+}
+
+.filter-select:focus, .filter-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background-color: white;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.select-icon {
+  position: absolute;
+  right: 1rem;
+  pointer-events: none;
+  color: var(--text-light);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
+}
+
+.btn-outline {
+  border: 1px solid var(--border-color);
+  background: white;
+  color: var(--text-light);
+}
+
+.btn-outline:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
 @media (max-width: 1200px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -221,10 +316,16 @@
   .dashboard-content {
     grid-template-columns: 1fr;
   }
+  .filters-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 640px) {
   .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .filters-grid {
     grid-template-columns: 1fr;
   }
 }

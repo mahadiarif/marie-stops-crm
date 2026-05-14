@@ -15,7 +15,8 @@ import {
   ClipboardList,
   User,
   Shield,
-  HelpCircle
+  HelpCircle,
+  FileText
 } from 'lucide-react';
 import './Layout.css';
 
@@ -84,6 +85,13 @@ const Layout = () => {
           <NavLink to="/waiver" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             <ClipboardList size={20} />
             <span>Waiver List</span>
+          </NavLink>
+          
+          <div className="nav-group">ANALYTICS</div>
+
+          <NavLink to="/reports" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            <FileText size={20} />
+            <span>Reports</span>
           </NavLink>
           
           <div className="nav-group">SYSTEM</div>

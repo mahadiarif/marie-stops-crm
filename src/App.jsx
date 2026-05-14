@@ -10,6 +10,7 @@ import ClientList from './pages/ClientList';
 import WaiverList from './pages/waiver/WaiverList';
 import NewWaiver from './pages/waiver/NewWaiver';
 import Settings from './pages/Settings';
+import Reports from './pages/Reports';
 import Profile from './pages/Profile';
 import { AppDataProvider } from './context/AppDataContext';
 
@@ -28,6 +29,7 @@ function App() {
             <Route path="waiver" element={<WaiverList />} />
             <Route path="waiver/new" element={<NewWaiver />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="reports" element={<Reports />} />
             <Route path="profile" element={<Profile />} />
           </Route>
         </Routes>
