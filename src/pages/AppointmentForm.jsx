@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import API_URL from '../config';
 import axios from 'axios';
 import { useAppData } from '../context/AppDataContext';
 import { Calendar, Trash2, Save, X, Phone, User, CheckCircle2, Send, Plus, Info, ArrowLeft } from 'lucide-react';
@@ -119,10 +120,7 @@ const AppointmentForm = () => {
       };
       
       if (editId) {
-        // In a real app, we'd use PUT /appointments/{id}
-        // For now, let's just log and mock
-        console.log("Updating appointment:", editId, data);
-        alert("Update functionality is being implemented. For now, data is logged.");
+        await axios.put(`${API_URL}/appointments/${editId}`, data);
       } else {
         await axios.post(`${API_URL}/appointments`, data);
       }

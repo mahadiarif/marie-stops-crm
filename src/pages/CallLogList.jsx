@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import API_URL from '../config';
 import { 
   Search, 
   Filter, 
@@ -16,26 +18,42 @@ import './CallLogList.css';
 const CallLogList = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [callLogs, setCallLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [callLogs, setCallLogs] = useState([
-    { id: 'LOG-001', phone: '01712345678', date: '15-05-2024 11:30 AM', type: 'Female', reason: 'Information on Family Planning', district: 'Dhaka', duration: '00:08:22', status: 'Resolved' },
-    { id: 'LOG-002', phone: '01811223344', date: '15-05-2024 10:15 AM', type: 'General', reason: 'General Health', district: 'Gazipur', duration: '00:03:15', status: 'Follow-up' },
-    { id: 'LOG-003', phone: '01911223344', date: '14-05-2024 04:45 PM', type: 'Female', reason: 'Support with Family Planning', district: 'Chattogram', duration: '00:12:10', status: 'Resolved' },
-    { id: 'LOG-004', phone: '01611223344', date: '14-05-2024 02:20 PM', type: 'Adolescent', reason: 'Adolescent Health', district: 'Sylhet', duration: '00:15:30', status: 'Appointment Set' },
-    { id: 'LOG-005', phone: '01755667788', date: '13-05-2024 09:10 AM', type: 'Male', reason: 'Information on Family Planning', district: 'Khulna', duration: '00:05:45', status: 'Resolved' },
-  ]);
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`${API_URL}/call-logs`);
+        setCallLogs(response.data);
+      } catch (err) {
+        console.error("Error fetching call logs:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLogs();
+  }, []);
 
   const handleView = (id) => {
-    alert(`Viewing details for Call Log ${id}`);
+    navigate(`/call-logs/new?id=${id}&view=true`);
   };
 
   const handleEdit = (id) => {
     navigate(`/call-logs/new?id=${id}`);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm(`Are you sure you want to delete call log ${id}?`)) {
-      setCallLogs(callLogs.filter(log => log.id !== id));
+      try {
+        await axios.delete(`${API_URL}/call-logs/${id}`);
+        setCallLogs(callLogs.filter(log => log.id !== id));
+        alert("Call log deleted successfully.");
+      } catch (err) {
+        console.error("Error deleting call log:", err);
+        alert("Failed to delete call log.");
+      }
     }
   };
 

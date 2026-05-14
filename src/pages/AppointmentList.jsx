@@ -3,6 +3,7 @@ import axios from 'axios';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useNavigate } from 'react-router-dom';
+import API_URL from '../config';
 import { 
   Plus, 
   Search, 
@@ -55,12 +56,12 @@ const AppointmentList = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this appointment?')) {
       try {
-        // Mock backend delete for now, but in reality:
-        // await axios.delete(`http://localhost:8000/appointments/${id}`);
+        await axios.delete(`${API_URL}/appointments/${id}`);
         setAppointments(prev => prev.filter(app => app.id !== id));
         alert("Appointment deleted successfully.");
       } catch (err) {
         console.error("Error deleting appointment:", err);
+        alert("Failed to delete appointment. Check if backend is running.");
       }
     }
   };

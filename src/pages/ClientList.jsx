@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import API_URL from '../config';
 import { 
   Search, 
   Filter, 
@@ -17,24 +19,39 @@ import './ClientList.css';
 const ClientList = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [clients, setClients] = useState([
-    { id: 'C-1001', name: 'Nusrat Jahan', phone: '01712345678', age: 28, address: 'Mirpur, Dhaka', registeredAt: '10-04-2024', totalVisits: 3 },
-    { id: 'C-1002', name: 'Farhana Islam', phone: '01811223344', age: 32, address: 'Dhanmondi, Dhaka', registeredAt: '15-04-2024', totalVisits: 1 },
-    { id: 'C-1003', name: 'Sabina Yasmin', phone: '01911223344', age: 25, address: 'Uttara, Dhaka', registeredAt: '22-04-2024', totalVisits: 2 },
-    { id: 'C-1004', name: 'Runa Laila', phone: '01611223344', age: 40, address: 'Gulshan, Dhaka', registeredAt: '05-05-2024', totalVisits: 1 },
-    { id: 'C-1005', name: 'Tania Akter', phone: '01755667788', age: 29, address: 'Mohammadpur, Dhaka', registeredAt: '12-05-2024', totalVisits: 0 },
-  ]);
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`${API_URL}/clients`);
+        setClients(response.data);
+      } catch (err) {
+        console.error("Error fetching clients:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchClients();
+  }, []);
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this client profile?')) {
-      setClients(clients.filter(client => client.id !== id));
+      try {
+        await axios.delete(`${API_URL}/clients/${id}`);
+        setClients(clients.filter(client => client.id !== id));
+        alert("Client deleted successfully.");
+      } catch (err) {
+        console.error("Error deleting client:", err);
+        alert("Failed to delete client.");
+      }
     }
   };
 
   const handleEdit = (id) => {
-    // Assuming there's a registration form, otherwise navigate to appointments
-    navigate(`/appointments/new?clientId=${id}`);
+    navigate(`/profile?id=${id}&edit=true`);
   };
 
   const handleView = (id) => {

@@ -1,20 +1,18 @@
-import { useSearchParams } from 'react-router-dom';
-import { User, Mail, Shield, MapPin, Phone, Calendar, Edit2, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import API_URL from '../config';
+import { User, Mail, Shield, MapPin, Phone, Calendar, Edit2, ArrowLeft, Save, X } from 'lucide-react';
 import './Profile.css';
 
 const Profile = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const clientId = searchParams.get('id');
-  const [isEditing, setIsEditing] = useState(false);
-
-  // Mock database (should be fetched from context or API later)
-  const allClients = [
-    { id: 'C-1001', name: 'Nusrat Jahan', phone: '01712345678', age: 28, address: 'Mirpur, Dhaka', registeredAt: '10-04-2024', email: 'nusrat@example.com', joined: '10 Apr 2024', avatar: 'NJ' },
-    { id: 'C-1002', name: 'Farhana Islam', phone: '01811223344', age: 32, address: 'Dhanmondi, Dhaka', registeredAt: '15-04-2024', email: 'farhana@example.com', joined: '15 Apr 2024', avatar: 'FI' },
-    { id: 'C-1003', name: 'Sabina Yasmin', phone: '01911223344', age: 25, address: 'Uttara, Dhaka', registeredAt: '22-04-2024', email: 'sabina@example.com', joined: '22 Apr 2024', avatar: 'SY' },
-    { id: 'C-1004', name: 'Runa Laila', phone: '01611223344', age: 40, address: 'Gulshan, Dhaka', registeredAt: '05-05-2024', email: 'runa@example.com', joined: '05 May 2024', avatar: 'RL' },
-    { id: 'C-1005', name: 'Tania Akter', phone: '01755667788', age: 29, address: 'Mohammadpur, Dhaka', registeredAt: '12-05-2024', email: 'tania@example.com', joined: '12 May 2024', avatar: 'TA' },
-  ];
+  const initialEdit = searchParams.get('edit') === 'true';
+  
+  const [isEditing, setIsEditing] = useState(initialEdit);
+  const [loading, setLoading] = useState(false);
 
   const [user, setUser] = useState({
     id: 'ADMIN',
@@ -30,26 +28,55 @@ const Profile = () => {
   const [editForm, setEditForm] = useState({ ...user });
 
   useEffect(() => {
-    const client = allClients.find(c => c.id === clientId);
-    if (client) {
-      const clientData = {
-        name: client.name,
-        role: 'Client',
-        email: client.email,
-        phone: client.phone,
-        location: client.address,
-        joined: client.joined,
-        avatar: client.avatar
+    if (clientId) {
+      const fetchClient = async () => {
+        try {
+          setLoading(true);
+          const response = await axios.get(`${API_URL}/clients`);
+          const client = response.data.find(c => c.id === parseInt(clientId) || c.id === clientId);
+          
+          if (client) {
+            const clientData = {
+              id: client.id,
+              name: client.name,
+              role: 'Client',
+              email: client.email || 'N/A',
+              phone: client.phone,
+              location: client.address || 'N/A',
+              joined: client.created_at ? new Date(client.created_at).toLocaleDateString() : 'N/A',
+              avatar: client.name ? client.name.charAt(0).toUpperCase() : 'C'
+            };
+            setUser(clientData);
+            setEditForm(clientData);
+          }
+        } catch (err) {
+          console.error("Error fetching client profile:", err);
+        } finally {
+          setLoading(false);
+        }
       };
-      setUser(prev => ({...prev, ...clientData}));
-      setEditForm(prev => ({...prev, ...clientData}));
+      fetchClient();
     }
   }, [clientId]);
 
-  const handleSave = () => {
-    setUser(editForm);
-    setIsEditing(false);
-    alert("Profile updated successfully!");
+  const handleSave = async () => {
+    try {
+      if (clientId) {
+        // Update client
+        await axios.put(`${API_URL}/clients/${clientId}`, {
+          name: editForm.name,
+          phone: editForm.phone,
+          address: editForm.location,
+          email: editForm.email
+        });
+      }
+      setUser(editForm);
+      setIsEditing(false);
+      alert("Profile updated successfully!");
+    } catch (err) {
+      console.error("Error updating profile:", err);
+      alert("Failed to update profile.");
+    }
   };
 
   const handleCancel = () => {
