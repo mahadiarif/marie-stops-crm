@@ -1,0 +1,202 @@
+.inline-select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  background: #fff;
+  color: #1e293b;
+  min-width: 140px;
+  cursor: pointer;
+}
+
+.inline-select:focus {
+  outline: none;
+  border-color: #005CB9;
+  box-shadow: 0 0 0 2px rgba(0, 92, 185, 0.15);
+}
+
+.inline-input {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  width: 110px;
+  color: #1e293b;
+  background: #fff;
+}
+
+.inline-input:focus {
+  outline: none;
+  border-color: #005CB9;
+  box-shadow: 0 0 0 2px rgba(0, 92, 185, 0.15);
+}
+
+.btn-save-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.35rem 0.75rem;
+  background: #005CB9;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-save-row:hover:not(:disabled) {
+  background: #0047a0;
+}
+
+.btn-save-disabled {
+  background: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.save-success {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #10b981;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.row-dirty td {
+  background: #f0f7ff;
+}
+
+/* ── Clinic Grid ── */
+.clinic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.clinic-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.clinic-card:hover {
+  border-color: #005CB9;
+  box-shadow: 0 4px 16px rgba(0, 92, 185, 0.12);
+  transform: translateY(-2px);
+}
+
+.clinic-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.clinic-icon {
+  width: 44px;
+  height: 44px;
+  background: #eff6ff;
+  color: #005CB9;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clinic-chevron {
+  color: #cbd5e1;
+  transition: color 0.15s;
+}
+
+.clinic-card:hover .clinic-chevron {
+  color: #005CB9;
+}
+
+.clinic-card-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.3;
+}
+
+.clinic-type-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: #eff6ff;
+  color: #005CB9;
+  padding: 0.2rem 0.5rem;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.clinic-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: -0.25rem;
+}
+
+.clinic-card-meta svg {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.clinic-card-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.clinic-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.clinic-stat svg {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.clinic-stat-spending {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #005CB9;
+  margin-top: 0.25rem;
+}
+
+.clinic-card-btn {
+  margin-top: auto;
+  padding: 0.5rem 1rem;
+  background: #005CB9;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  text-align: center;
+}
+
+.clinic-card:hover .clinic-card-btn {
+  background: #0047a0;
+}
+
+@media (max-width: 640px) {
+  .clinic-grid {
+    grid-template-columns: 1fr;
+  }
+}

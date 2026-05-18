@@ -35,3 +35,5 @@ env/
 
 # Database (do not commit production DB)
 backend/crm.db
+crm.db
+*.db

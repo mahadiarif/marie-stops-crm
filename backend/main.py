@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
 import models, database, auth
+import datetime
 
 app = FastAPI(title="Marie Stopes CRM API")
 
@@ -16,13 +17,15 @@ class RegisterRequest(BaseModel):
     username: str
     email: str
     password: str
-    role: str = "staff"  # default role
+    role: str = "staff"
+    assigned_clinic: str | None = None
 
 class LoginResponse(BaseModel):
     access_token: str
     user_id: int
     username: str
     role: str
+    assigned_clinic: str | None = None
 
 class UserResponse(BaseModel):
     id: int
@@ -30,6 +33,7 @@ class UserResponse(BaseModel):
     email: str
     role: str
     is_active: bool
+    assigned_clinic: str | None = None
 
     class Config:
         from_attributes = True
@@ -70,7 +74,8 @@ def login(credentials: LoginRequest, db: Session = Depends(database.get_db)):
         "access_token": access_token,
         "user_id": user.id,
         "username": user.username,
-        "role": user.role
+        "role": user.role,
+        "assigned_clinic": user.assigned_clinic
     }
 
 @app.post("/auth/register", response_model=UserResponse)
@@ -103,7 +108,8 @@ def register(
         username=req.username,
         email=req.email,
         password_hash=auth.hash_password(req.password),
-        role=req.role
+        role=req.role,
+        assigned_clinic=req.assigned_clinic
     )
     db.add(new_user)
     db.commit()
@@ -138,13 +144,14 @@ def update_user(
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Allow updating email, role, and is_active
     if "email" in user_data:
         db_user.email = user_data["email"]
     if "role" in user_data:
         db_user.role = user_data["role"]
     if "is_active" in user_data:
         db_user.is_active = user_data["is_active"]
+    if "assigned_clinic" in user_data:
+        db_user.assigned_clinic = user_data["assigned_clinic"]
 
     db.commit()
     db.refresh(db_user)
@@ -221,6 +228,8 @@ def get_appointments(
             "client_id": a.client_id,
             "client_name": client.name if client else "Unknown",
             "client_phone": client.phone if client else "N/A",
+            "age": client.age if client else "",
+            "address": client.address if client else "",
             "clinic": a.clinic,
             "reason": a.reason,
             "visit_date": a.visit_date,
@@ -231,7 +240,17 @@ def get_appointments(
             "visit_status_clinic": a.visit_status_clinic,
             "followup_status_cc": a.followup_status_cc,
             "generated_from": a.generated_from,
-            "ref_id": a.ref_id
+            "ref_id": a.ref_id,
+            "agent_name": a.agent_name,
+            "source_name": a.source_name,
+            "source_phone": a.source_phone,
+            "ngo": a.ngo,
+            "added_by": a.added_by,
+            "enumerator": a.enumerator,
+            "source_remarks": a.source_remarks,
+            "alt_phone": a.alt_phone,
+            "followup_preference": a.followup_preference,
+            "spending_amount": a.spending_amount or 0
         })
     return result
 
@@ -241,7 +260,48 @@ def create_appointment(
     current_user: models.User = Depends(auth.verify_token),
     db: Session = Depends(database.get_db)
 ):
-    db_appt = models.Appointment(**appointment_data)
+    # Extract client data
+    client_name = appointment_data.pop("client_name", None)
+    client_phone = appointment_data.pop("client_phone", None)
+    age = appointment_data.pop("age", None)
+    address = appointment_data.pop("address", None)
+
+    # Find or create client
+    client = None
+    if client_phone:
+        client = db.query(models.Client).filter(models.Client.phone == client_phone).first()
+    
+    if not client:
+        client = models.Client(
+            name=client_name, 
+            phone=client_phone, 
+            age=int(age) if age else 0, 
+            address=address
+        )
+        db.add(client)
+        db.commit()
+        db.refresh(client)
+    else:
+        if client_name: client.name = client_name
+        if age is not None: client.age = int(age) if age else 0
+        if address: client.address = address
+        db.commit()
+
+    # Parse visit_date
+    if "visit_date" in appointment_data and isinstance(appointment_data["visit_date"], str):
+        try:
+            # Handle ISO format from frontend
+            dt_str = appointment_data["visit_date"].replace('Z', '')
+            appointment_data["visit_date"] = datetime.datetime.fromisoformat(dt_str)
+        except Exception as e:
+            print(f"Date parse error: {e}")
+            appointment_data["visit_date"] = datetime.datetime.utcnow()
+
+    # Filter only valid fields for the model
+    valid_fields = {k: v for k, v in appointment_data.items() if hasattr(models.Appointment, k)}
+    valid_fields["client_id"] = client.id
+    
+    db_appt = models.Appointment(**valid_fields)
     db.add(db_appt)
     db.commit()
     db.refresh(db_appt)
@@ -257,8 +317,28 @@ def update_appointment(
     db_appt = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
     if not db_appt:
         raise HTTPException(status_code=404, detail="Appointment not found")
+
+    # Extract client data
+    client_name = appointment_data.pop("client_name", None)
+    client_phone = appointment_data.pop("client_phone", None)
+    age = appointment_data.pop("age", None)
+    address = appointment_data.pop("address", None)
+
+    # Update client if exists
+    if db_appt.client_id:
+        client = db.query(models.Client).filter(models.Client.id == db_appt.client_id).first()
+        if client:
+            if client_name: client.name = client_name
+            if client_phone: client.phone = client_phone
+            if age: client.age = age
+            if address: client.address = address
+            db.commit()
+
+    # Update appointment fields
     for key, value in appointment_data.items():
-        setattr(db_appt, key, value)
+        if hasattr(db_appt, key):
+            setattr(db_appt, key, value)
+    
     db.commit()
     db.refresh(db_appt)
     return db_appt
@@ -388,6 +468,17 @@ def create_waiver(
     current_user: models.User = Depends(auth.verify_token),
     db: Session = Depends(database.get_db)
 ):
+    # Parse date
+    if "date" in waiver_data and isinstance(waiver_data["date"], str):
+        try:
+            dt_str = waiver_data["date"].replace('Z', '')
+            if 'T' in dt_str:
+                waiver_data["date"] = datetime.datetime.fromisoformat(dt_str)
+            else:
+                waiver_data["date"] = datetime.datetime.strptime(dt_str, "%Y-%m-%d")
+        except:
+            waiver_data["date"] = datetime.datetime.utcnow()
+
     db_waiver = models.Waiver(**waiver_data)
     db.add(db_waiver)
     db.commit()
@@ -422,3 +513,128 @@ def delete_waiver(
     db.delete(waiver)
     db.commit()
     return {"message": "Waiver deleted"}
+
+# CLINIC CENTERS ENDPOINTS
+@app.get("/clinic-centers")
+def get_clinic_centers(
+    current_user: models.User = Depends(auth.verify_token),
+    db: Session = Depends(database.get_db)
+):
+    centers = db.query(models.ClinicCenter).all()
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "address": c.address,
+            "phone": c.phone,
+            "district": c.district,
+            "center_type": c.center_type,
+            "contact_person": c.contact_person,
+        }
+        for c in centers
+    ]
+
+@app.post("/clinic-centers")
+def create_clinic_center(
+    data: dict,
+    current_user: models.User = Depends(auth.require_role("admin", "manager")),
+    db: Session = Depends(database.get_db)
+):
+    name = data.get("name", "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Clinic name is required")
+
+    existing = db.query(models.ClinicCenter).filter(models.ClinicCenter.name == name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Clinic with this name already exists")
+
+    # Create clinic center record
+    center = models.ClinicCenter(
+        name=name,
+        address=data.get("address", ""),
+        phone=data.get("phone", ""),
+        district=data.get("district", ""),
+        center_type=data.get("center_type", ""),
+        contact_person=data.get("contact_person", ""),
+    )
+    db.add(center)
+
+    # Add to settings if not already present
+    existing_setting = db.query(models.Setting).filter(
+        models.Setting.category == "clinic",
+        models.Setting.value == name
+    ).first()
+    if not existing_setting:
+        db.add(models.Setting(category="clinic", value=name))
+
+    # Create user account if credentials provided
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
+    created_user = None
+    if username and password:
+        existing_user = db.query(models.User).filter(models.User.username == username).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail=f"Username '{username}' already taken")
+        new_user = models.User(
+            username=username,
+            email=data.get("email", f"{username}@mariestopes.org"),
+            password_hash=auth.hash_password(password),
+            role="clinic",
+            is_active=True,
+            assigned_clinic=name,
+        )
+        db.add(new_user)
+        created_user = username
+
+    db.commit()
+    db.refresh(center)
+    return {
+        "id": center.id,
+        "name": center.name,
+        "address": center.address,
+        "phone": center.phone,
+        "district": center.district,
+        "center_type": center.center_type,
+        "contact_person": center.contact_person,
+        "user_created": created_user,
+    }
+
+@app.put("/clinic-centers/{center_id}")
+def update_clinic_center(
+    center_id: int,
+    data: dict,
+    current_user: models.User = Depends(auth.require_role("admin", "manager")),
+    db: Session = Depends(database.get_db)
+):
+    center = db.query(models.ClinicCenter).filter(models.ClinicCenter.id == center_id).first()
+    if not center:
+        raise HTTPException(status_code=404, detail="Clinic not found")
+    for field in ["address", "phone", "district", "center_type", "contact_person"]:
+        if field in data:
+            setattr(center, field, data[field])
+    db.commit()
+    db.refresh(center)
+    return {"id": center.id, "name": center.name, "address": center.address,
+            "phone": center.phone, "district": center.district,
+            "center_type": center.center_type, "contact_person": center.contact_person}
+
+# ADMIN IMPERSONATE CLINIC
+@app.post("/auth/impersonate/{user_id}")
+def impersonate_user(
+    user_id: int,
+    current_user: models.User = Depends(auth.require_role("admin")),
+    db: Session = Depends(database.get_db)
+):
+    target = db.query(models.User).filter(models.User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.role != "clinic":
+        raise HTTPException(status_code=403, detail="Can only impersonate clinic users")
+    token = auth.create_access_token(data={"sub": target.username})
+    return {
+        "access_token": token,
+        "user_id": target.id,
+        "username": target.username,
+        "role": target.role,
+        "assigned_clinic": target.assigned_clinic,
+    }

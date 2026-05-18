@@ -2,307 +2,181 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppData } from '../../context/AppDataContext';
 import { Save, X, ArrowLeft, ClipboardList, Info } from 'lucide-react';
+import axiosClient from '../../api/axiosClient';
 import './NewWaiver.css';
 
-const NewWaiver = () => {
+// ── Pure form content for modal/page ──
+export function WaiverFormContent({ editId, isViewOnly, onClose, onSaved }) {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { clinics, waiverCenterPrefixes, waiverServices, addWaiver, updateWaiver, waivers } = useAppData();
+  const { clinics, waiverCenterPrefixes, waiverServices } = useAppData();
   
   const [formData, setFormData] = useState({
     date: new Date().toISOString().slice(0, 16),
     center: '',
-    clientId: '',
-    firstName: '',
+    client_id_code: '',
+    first_name: '',
     service: '',
-    totalPrice: 0,
-    waiverAmount: 0,
-    paidAmount: 0,
-    waiverCode: '',
+    total_price: 0,
+    waiver_amount: 0,
+    paid_amount: 0,
+    waiver_code: '',
     remarks: ''
   });
 
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState(false);
-  const [editId, setEditId] = useState(null);
-  const [isViewOnly, setIsViewOnly] = useState(false);
 
-  // Check for edit mode
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const id = params.get('id');
-    const view = params.get('view') === 'true';
-    setIsViewOnly(view);
-
-    if (id) {
-      const existing = waivers.find(w => w.id === parseInt(id));
-      if (existing) {
-        setFormData(existing);
-        setEditId(parseInt(id));
-      }
+    if (editId) {
+      const fetchWaiver = async () => {
+        try {
+          const response = await axiosClient.get(`/waivers`);
+          const existing = response.data.find(w => w.id === parseInt(editId));
+          if (existing) {
+            setFormData({
+              ...existing,
+              date: existing.date ? new Date(existing.date).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16)
+            });
+          }
+        } catch (err) {
+          console.error("Waiver Save Error:", err);
+          const errMsg = err.response?.data?.detail || err.message || "Unknown error";
+          alert(`Failed to save waiver: ${errMsg}`);
+        }
+      };
+      fetchWaiver();
     } else {
-      // Generate initial waiver code for new form
       const randomCode = 'wv-' + Math.floor(10000 + Math.random() * 90000);
-      setFormData(prev => ({ ...prev, waiverCode: randomCode }));
+      setFormData(prev => ({ ...prev, waiver_code: randomCode }));
     }
-  }, [location.search, waivers]);
+  }, [editId]);
 
-  // Handle Center Select & ID Generation
   useEffect(() => {
     if (formData.center && !editId) {
       const prefix = waiverCenterPrefixes[formData.center] || 'Gen';
-      // Count existing waivers for this center to increment ID
-      const centerWaivers = waivers.filter(w => w.center === formData.center);
-      const nextNum = (centerWaivers.length + 1).toString().padStart(4, '0');
-      setFormData(prev => ({ ...prev, clientId: `${prefix}-ae-${nextNum}` }));
+      const nextNum = Math.floor(1000 + Math.random() * 9000).toString();
+      setFormData(prev => ({ ...prev, client_id_code: `${prefix}-ae-${nextNum}` }));
     }
-  }, [formData.center, waiverCenterPrefixes, waivers, editId]);
+  }, [formData.center, waiverCenterPrefixes, editId]);
 
-  // Handle Paid Amount Auto-calculation
   useEffect(() => {
-    const paid = Math.max(0, formData.totalPrice - formData.waiverAmount);
-    setFormData(prev => ({ ...prev, paidAmount: paid }));
-    
-    // Validation: Waiver cannot exceed total
-    if (formData.waiverAmount > formData.totalPrice && formData.totalPrice > 0) {
-      setErrors(prev => ({ ...prev, waiverAmount: "Amount of Waiver cannot exceed Total Service Price" }));
-    } else {
-      setErrors(prev => {
-        const { waiverAmount, ...rest } = prev;
-        return rest;
-      });
-    }
-  }, [formData.totalPrice, formData.waiverAmount]);
+    const paid = Math.max(0, formData.total_price - formData.waiver_amount);
+    setFormData(prev => ({ ...prev, paid_amount: paid }));
+  }, [formData.total_price, formData.waiver_amount]);
 
   const handleChange = (e) => {
     if (isViewOnly) return;
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'totalPrice' || name === 'waiverAmount' ? parseFloat(value) || 0 : value
-    }));
+    setFormData(prev => ({ ...prev, [name]: name === 'total_price' || name === 'waiver_amount' ? parseFloat(value) || 0 : value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (isViewOnly) return;
-    
-    // Final validation
-    if (formData.waiverAmount > formData.totalPrice) {
-      alert("Amount of Waiver cannot exceed Total Service Price");
+
+    // Basic Validation
+    if (!formData.first_name || !formData.center || !formData.service || formData.total_price <= 0) {
+      alert("Please fill in required fields and ensure total price is greater than zero.");
       return;
     }
 
-    if (!formData.center || !formData.firstName || !formData.service) {
-      alert("Please fill in all required fields.");
+    if (formData.waiver_amount > formData.total_price) {
+      alert("Amount of Waiver cannot exceed Total Service Price.");
       return;
     }
 
-    if (editId) {
-      updateWaiver(editId, formData);
-    } else {
-      addWaiver({
-        ...formData,
-        id: Date.now()
-      });
-    }
+    try {
+      console.log("Saving waiver data...");
 
-    setSuccess(true);
-    setTimeout(() => {
-      setSuccess(false);
-      if (editId) {
-        navigate('/waiver');
-      } else {
-        // Reset for new waiver
-        const randomCode = 'wv-' + Math.floor(10000 + Math.random() * 90000);
-        setFormData({
-          date: new Date().toISOString().slice(0, 16),
-          center: '',
-          clientId: '',
-          firstName: '',
-          service: '',
-          totalPrice: 0,
-          waiverAmount: 0,
-          paidAmount: 0,
-          waiverCode: randomCode,
-          remarks: ''
-        });
-      }
-    }, 2000);
+      if (editId) await axiosClient.put(`/waivers/${editId}`, formData);
+      else await axiosClient.post(`/waivers`, formData);
+      setSuccess(true);
+      setTimeout(() => {
+        setSuccess(false);
+        if (onSaved) onSaved();
+        else if (onClose) onClose();
+        else navigate('/waiver');
+      }, 1500);
+    } catch (err) { alert("Failed to save."); }
   };
+
+  return (
+    <div className="appt-form-content">
+      {success && <div className="alert alert-success">✅ Waiver saved successfully!</div>}
+      <form onSubmit={handleSubmit}>
+        <div className="grid-2">
+          <div className="form-group">
+            <label className="form-label">Date <span>*</span></label>
+            <input type="datetime-local" name="date" className="form-control" value={formData.date} onChange={handleChange} required readOnly={isViewOnly} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Waiver Center <span>*</span></label>
+            <select name="center" className="form-control" value={formData.center} onChange={handleChange} required disabled={isViewOnly}>
+              <option value="">-- Select Center --</option>
+              {clinics.map((c, i) => <option key={i} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="grid-2">
+          <div className="form-group">
+            <label className="form-label">Waiver Client ID</label>
+            <input type="text" className="form-control" value={formData.client_id_code} readOnly style={{background: '#f1f5f9'}} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">First Name <span>*</span></label>
+            <input type="text" name="first_name" className="form-control" value={formData.first_name} onChange={handleChange} required readOnly={isViewOnly} />
+          </div>
+        </div>
+        <div className="grid-2 mt-4">
+          <div className="form-group">
+            <label className="form-label">Service <span>*</span></label>
+            <select name="service" className="form-control" value={formData.service} onChange={handleChange} required disabled={isViewOnly}>
+              <option value="">-- Select Service --</option>
+              {waiverServices.map((s, i) => <option key={i} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Total Price</label>
+            <input type="number" name="total_price" className="form-control" value={formData.total_price} onChange={handleChange} required readOnly={isViewOnly} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Waiver Amount</label>
+            <input type="number" name="waiver_amount" className="form-control" value={formData.waiver_amount} onChange={handleChange} required readOnly={isViewOnly} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Paid Amount</label>
+            <input type="number" className="form-control" value={formData.paid_amount} readOnly style={{background: '#f1f5f9'}} />
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Remarks</label>
+          <textarea name="remarks" className="form-control" rows="2" value={formData.remarks} onChange={handleChange} readOnly={isViewOnly} />
+        </div>
+        <div className="form-footer mt-6">
+          {!isViewOnly && <button type="submit" className="btn btn-success btn-lg"><Save size={18} /> Save Waiver</button>}
+          <button type="button" className="btn btn-danger btn-lg" onClick={() => (onClose ? onClose() : navigate('/waiver'))}><X size={18} /> {isViewOnly ? 'Close' : 'Cancel'}</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+const NewWaiver = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useState(new URLSearchParams(location.search));
+  const editId = searchParams.get('id');
+  const isViewOnly = searchParams.get('view') === 'true';
 
   return (
     <div className="form-page-container">
       <div className="form-header">
-        <div className="breadcrumb">
-          <ClipboardList size={14} />
-          <span>/ Waiver / {isViewOnly ? 'View Details' : (editId ? 'Edit Waiver' : 'New Waiver')}</span>
-        </div>
-        <div className="header-actions">
-          <button className="btn btn-warning btn-sm" onClick={() => navigate('/waiver')}>
-            <ArrowLeft size={16} />
-            Go To List
-          </button>
-        </div>
+        <div className="breadcrumb"><ClipboardList size={14} /> <span>/ Waiver / Form</span></div>
+        <button className="btn btn-warning btn-sm" onClick={() => navigate('/waiver')}><ArrowLeft size={16} /> Go To List</button>
       </div>
-
       <div className="form-card card">
-        <div className="form-card-header">
-          <h2 className="form-title">{isViewOnly ? 'View Waiver Details' : (editId ? 'Update Waiver Record' : 'New Waiver Request')}</h2>
-        </div>
-
-        <div className="form-body">
-          {success && (
-            <div className="alert alert-success">
-              Waiver saved successfully!
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Date <span>*</span></label>
-                <input 
-                  type="datetime-local" 
-                  name="date"
-                  className="form-control" 
-                  value={formData.date}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Waiver Center <span>*</span></label>
-                <select 
-                  name="center"
-                  className="form-control" 
-                  value={formData.center}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="">-- Select Center --</option>
-                  {clinics.map((c, i) => <option key={i} value={c}>{c}</option>)}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Waiver Client ID <span>*</span></label>
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  value={formData.clientId}
-                  readOnly 
-                  placeholder="Auto-generated"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">First Name <span>*</span></label>
-                <input 
-                  type="text" 
-                  name="firstName"
-                  className="form-control" 
-                  placeholder="Client First Name" 
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid-2 mt-4">
-              <div className="form-group">
-                <label className="form-label">Service <span>*</span></label>
-                <select 
-                  name="service"
-                  className="form-control" 
-                  value={formData.service}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="">-- Select Service --</option>
-                  {waiverServices.map((s, i) => <option key={i} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Total Service Price <span>*</span></label>
-                <input 
-                  type="number" 
-                  name="totalPrice"
-                  className="form-control" 
-                  value={formData.totalPrice}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Amount of Waiver <span>*</span></label>
-                <input 
-                  type="number" 
-                  name="waiverAmount"
-                  className={`form-control ${errors.waiverAmount ? 'is-invalid' : ''}`} 
-                  value={formData.waiverAmount}
-                  onChange={handleChange}
-                  required
-                />
-                {errors.waiverAmount && <div className="error-text">{errors.waiverAmount}</div>}
-              </div>
-              <div className="form-group">
-                <label className="form-label">Amount Paid by Client</label>
-                <input 
-                  type="number" 
-                  className="form-control" 
-                  value={formData.paidAmount}
-                  readOnly 
-                />
-              </div>
-            </div>
-
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label">Waiver Code</label>
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  value={formData.waiverCode}
-                  readOnly 
-                />
-              </div>
-            </div>
-
-            <div className="form-group mt-4">
-              <label className="form-label">Remarks</label>
-              <textarea 
-                name="remarks"
-                className="form-control" 
-                rows="3" 
-                placeholder="Enter remarks..."
-                value={formData.remarks}
-                onChange={handleChange}
-              ></textarea>
-            </div>
-
-            <div className="note-box">
-              <Info size={18} className="text-warning" />
-              <p>Note: Fields marked with <span>*</span> are required. Amount Paid is automatically calculated.</p>
-            </div>
-
-            <div className="form-footer mt-6">
-              <button type="submit" className="btn btn-success btn-lg">
-                <Save size={18} />
-                {editId ? 'Update Waiver' : 'Save Waiver'}
-              </button>
-              <button type="button" className="btn btn-danger btn-lg" onClick={() => navigate('/waiver')}>
-                <X size={18} />
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
+        <div className="form-card-header"><h2 className="form-title">Waiver Request</h2></div>
+        <div className="form-body"><WaiverFormContent editId={editId} isViewOnly={isViewOnly} /></div>
       </div>
     </div>
   );

@@ -16,11 +16,17 @@ export function AuthProvider({ children }) {
     const savedToken = localStorage.getItem('authToken');
     if (savedToken) {
       setToken(savedToken);
-      // Verify token is still valid by fetching user info
       verifyToken(savedToken);
     } else {
       setLoading(false);
     }
+
+    const handleImpersonate = (e) => {
+      setToken(localStorage.getItem('authToken'));
+      setUser(e.detail);
+    };
+    window.addEventListener('crm-impersonate', handleImpersonate);
+    return () => window.removeEventListener('crm-impersonate', handleImpersonate);
   }, []);
 
   const verifyToken = async (authToken) => {
@@ -30,7 +36,14 @@ export function AuthProvider({ children }) {
           Authorization: `Bearer ${authToken}`
         }
       });
-      setUser(response.data);
+      const d = response.data;
+      setUser({
+        id: d.id,
+        username: d.username,
+        role: d.role,
+        email: d.email || '',
+        assignedClinic: d.assigned_clinic || null
+      });
       setError(null);
     } catch (err) {
       console.error('Token verification failed:', err);
@@ -51,14 +64,15 @@ export function AuthProvider({ children }) {
         password
       });
 
-      const { access_token, user_id, username: uname, role } = response.data;
+      const { access_token, user_id, username: uname, role, assigned_clinic } = response.data;
 
       setToken(access_token);
       setUser({
         id: user_id,
         username: uname,
         role,
-        email: ''
+        email: '',
+        assignedClinic: assigned_clinic || null
       });
 
       localStorage.setItem('authToken', access_token);

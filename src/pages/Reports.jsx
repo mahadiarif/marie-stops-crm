@@ -140,62 +140,64 @@ const Reports = () => {
 
       {/* Modern Toolbar Filter Section (Same as Appointments) */}
       <div className="card list-card no-print" style={{ marginBottom: '1.5rem' }}>
-        <div className="list-toolbar flex-wrap" style={{ display: 'flex', gap: '1rem', padding: '1.5rem', background: '#fff' }}>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end', width: '100%' }}>
-            <div className="form-group" style={{ flex: '1', minWidth: '200px', marginBottom: 0 }}>
-              <label style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Search</label>
-              <div className="search-box" style={{ width: '100%' }}>
-                <Search size={18} className="search-icon" />
-                <input 
-                  type="text" 
-                  placeholder="Search by name, phone, or ID..." 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="form-group" style={{ minWidth: '180px', marginBottom: 0 }}>
-              <label style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>From Date</label>
-              <DatePicker
-                selected={fromDate}
-                onChange={(date) => setFromDate(date)}
-                showTimeSelect
-                dateFormat="Pp"
-                className="form-control"
-                placeholderText="Select start date"
+        <div className="list-toolbar-new">
+          <div className="filter-group">
+            <label>Search Data</label>
+            <div className="search-wrapper">
+              <Search size={18} className="search-icon" />
+              <input 
+                type="text" 
+                placeholder="Search by name, phone, or ID..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+          </div>
 
-            <div className="form-group" style={{ minWidth: '180px', marginBottom: 0 }}>
-              <label style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>To Date</label>
-              <DatePicker
-                selected={toDate}
-                onChange={(date) => setToDate(date)}
-                showTimeSelect
-                dateFormat="Pp"
-                className="form-control"
-                placeholderText="Select end date"
-              />
-            </div>
+          <div className="filter-group">
+            <label>From Date</label>
+            <DatePicker
+              selected={fromDate}
+              onChange={(date) => setFromDate(date)}
+              showTimeSelect
+              dateFormat="Pp"
+              placeholderText="Select start date"
+              className="uniform-input"
+              portalId="root"
+            />
+          </div>
 
-            <div className="form-group" style={{ minWidth: '180px', marginBottom: 0 }}>
-              <label style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Clinic</label>
-              <select className="form-control" value={clinicFilter} onChange={(e) => setClinicFilter(e.target.value)}>
-                <option value="">-- All Clinics --</option>
-                {clinics.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
+          <div className="filter-group">
+            <label>To Date</label>
+            <DatePicker
+              selected={toDate}
+              onChange={(date) => setToDate(date)}
+              showTimeSelect
+              dateFormat="Pp"
+              placeholderText="Select end date"
+              className="uniform-input"
+              portalId="root"
+            />
+          </div>
 
-            <div className="form-group" style={{ minWidth: '150px', marginBottom: 0 }}>
-              <label style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Status</label>
-              <select className="form-control" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="">-- All Statuses --</option>
-                {visitStatus.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
+          <div className="filter-group">
+            <label>Clinic</label>
+            <select className="uniform-input" value={clinicFilter} onChange={(e) => setClinicFilter(e.target.value)}>
+              <option value="">-- All Clinics --</option>
+              {clinics.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
 
-            <button className="btn btn-outline" style={{ height: '38px' }} onClick={clearFilters}>
+          <div className="filter-group">
+            <label>Status</label>
+            <select className="uniform-input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="">-- All Statuses --</option>
+              {visitStatus.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+
+          <div className="filter-group button-group">
+            <button className="btn-search" onClick={clearFilters} style={{ backgroundColor: '#64748b' }}>
               <XCircle size={16} /> Reset
             </button>
           </div>

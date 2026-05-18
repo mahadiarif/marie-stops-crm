@@ -1,6 +1,5 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import { createContext, useState, useEffect, useContext } from 'react';
 import axiosClient from '../api/axiosClient';
-import API_URL from '../config';
 
 const AppDataContext = createContext();
 
@@ -35,9 +34,7 @@ export const AppDataProvider = ({ children }) => {
     "Rangpur": "Rng"
   };
 
-  // Fetch all data from backend on load
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = async () => {
       try {
         // Fetch Settings
         const settingsRes = await axiosClient.get(`/settings`);
@@ -99,14 +96,22 @@ export const AppDataProvider = ({ children }) => {
           date: a.visit_date,
           status: a.reconfirmation || "Pending",
           type: a.reason || "Consultation",
-          followup: a.followup_status_cc || "Pending"
+          followup: a.followup_status_cc || "—",
+          visitStatus: a.visit_status_clinic || "—",
+          agent: a.agent_name || "—",
+          spendingAmount: a.spending_amount || 0,
         })));
 
       } catch (error) {
         console.error("Error fetching data from backend:", error);
       }
-    };
-    fetchData();
+  };
+
+  useEffect(() => {
+    if (localStorage.getItem('authToken')) fetchData();
+    const handleLogin = () => fetchData();
+    window.addEventListener('crm-login', handleLogin);
+    return () => window.removeEventListener('crm-login', handleLogin);
   }, []);
 
   const addGenericItem = (category, setter, state) => async (newItem) => {
@@ -193,7 +198,8 @@ export const AppDataProvider = ({ children }) => {
       clients,
       callLogs,
       appointments,
-      waiverCenterPrefixes
+      waiverCenterPrefixes,
+      refetchAll: fetchData,
     }}>
       {children}
     </AppDataContext.Provider>

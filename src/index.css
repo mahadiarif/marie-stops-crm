@@ -103,48 +103,81 @@ input, select, textarea {
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
+/* ── Global Buttons ── */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1.25rem;
+  gap: 0.625rem;
+  padding: 0.65rem 1.25rem;
+  font-weight: 600;
   font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   border: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: var(--font-heading);
 }
 
+.btn-sm {
+  padding: 0.4rem 0.875rem;
+  font-size: 0.8125rem;
+}
+
+.btn-lg {
+  padding: 0.875rem 1.75rem;
+  font-size: 1rem;
+}
+
+/* Primary - Marie Stopes Blue */
 .btn-primary {
   background-color: var(--primary);
   color: white;
-  box-shadow: 0 4px 6px -1px rgba(0, 92, 185, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 92, 185, 0.25);
 }
 
 .btn-primary:hover {
   background-color: var(--primary-hover);
   transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 92, 185, 0.35);
 }
 
+/* Success/Save - Clean Emerald or Brand Blue */
+.btn-success {
+  background-color: #10b981; /* Emerald for positive action */
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.btn-success:hover {
+  background-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+}
+
+/* Danger/Cancel - Brand Pink/Red */
+.btn-danger {
+  background-color: #f1f5f9; /* Soft grey for cancel */
+  color: #64748b;
+  border: 1px solid var(--border-color);
+}
+
+.btn-danger:hover {
+  background-color: #fee2e2;
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
+/* Special Pink Button (if needed) */
 .btn-accent {
   background-color: var(--accent);
   color: white;
-  box-shadow: 0 4px 6px -1px rgba(228, 0, 126, 0.2);
+  box-shadow: 0 4px 12px rgba(228, 0, 126, 0.2);
 }
 
 .btn-accent:hover {
   background-color: var(--accent-hover);
   transform: translateY(-1px);
-}
-
-.btn-success {
-  background-color: var(--success);
-  color: white;
-}
-
-.btn-danger {
-  background-color: var(--danger);
-  color: white;
 }
 
 .btn-outline {
@@ -288,6 +321,7 @@ td {
 
 /* Common Form Branding */
 .form-card {
+  width: 100%;
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-lg);
@@ -310,6 +344,7 @@ td {
 
 .form-body {
   padding: 2rem;
+  width: 100%;
 }
 
 .form-footer {

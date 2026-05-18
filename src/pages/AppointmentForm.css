@@ -2,8 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  max-width: 1400px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .form-header {
@@ -21,7 +20,7 @@
 }
 
 .form-section {
-  margin-bottom: 2.5rem;
+  margin-bottom: 2rem;
 }
 
 .section-header {
@@ -31,9 +30,7 @@
   margin-bottom: 1rem;
 }
 
-.input-with-icon {
-  position: relative;
-}
+.input-with-icon { position: relative; }
 
 .input-icon {
   position: absolute;
@@ -75,31 +72,125 @@
   border: 1px solid var(--border-color);
 }
 
+/* ── Form Footer Buttons (Now handled by global .btn classes) ── */
 .form-footer {
+  padding: 1.5rem 2rem;
+  background-color: #f8fafc;
+  border-top: 1px solid var(--border-color);
   display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.mt-4         { margin-top: 1rem; }
+
+/* ═══════════════════════════════════════
+   APPOINTMENT MODAL
+   ═══════════════════════════════════════ */
+
+.appt-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
   justify-content: center;
-  gap: 1.5rem;
+  padding: 1.5rem;
+  overflow-y: auto;
+  animation: overlayIn 0.2s ease both;
 }
 
-.btn-lg {
-  padding: 0.75rem 2rem;
-  font-size: 1rem;
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-.btn-sm {
-  padding: 0.4rem 0.75rem;
-  font-size: 0.75rem;
+.appt-modal-panel {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.06),
+    0 24px 64px rgba(0, 30, 80, 0.2);
+  width: 100%;
+  max-width: 860px;
+  margin: auto;
+  animation: panelIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  overflow: hidden;
 }
 
-.btn-warning {
-  background-color: #f59e0b;
-  color: white;
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(28px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
 }
 
-.text-danger {
-  color: var(--danger);
+/* Modal header stripe */
+.appt-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.75rem;
+  background: linear-gradient(135deg, #005CB9 0%, #0069d9 100%);
+  position: relative;
 }
 
-.font-bold {
+.appt-modal-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.1rem;
   font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.appt-modal-close {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #ffffff;
+  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.appt-modal-close:hover {
+  background: rgba(255,255,255,0.28);
+}
+
+.appt-modal-body {
+  padding: 1.75rem;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Pink accent bar on modal top */
+.appt-modal-panel::before {
+  content: '';
+  display: block;
+  height: 3px;
+  background: linear-gradient(90deg, #005CB9 0%, #E4007E 100%);
+}
+
+/* Scrollbar inside modal */
+.appt-modal-body::-webkit-scrollbar { width: 6px; }
+.appt-modal-body::-webkit-scrollbar-track { background: #f1f5f9; }
+.appt-modal-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+.appt-modal-body::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Form content inside modal */
+.appt-form-content .form-section {
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.appt-form-content .form-section:last-of-type {
+  border-bottom: none;
 }

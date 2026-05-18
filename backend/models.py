@@ -8,6 +8,7 @@ class RoleEnum(str, enum.Enum):
     admin = "admin"
     manager = "manager"
     staff = "staff"
+    clinic = "clinic"
 
 class Client(Base):
     __tablename__ = "clients"
@@ -22,6 +23,10 @@ class Appointment(Base):
     __tablename__ = "appointments"
     id = Column(Integer, primary_key=True, index=True)
     client_id = Column(Integer, ForeignKey("clients.id"))
+    client_name = Column(String)
+    client_phone = Column(String)
+    age = Column(String)
+    address = Column(Text)
     clinic = Column(String)
     reason = Column(String)
     visit_date = Column(DateTime)
@@ -34,20 +39,45 @@ class Appointment(Base):
     generated_from = Column(String)
     ref_id = Column(String)
     
+    # Missing fields for full appointment details
+    agent_name = Column(String)
+    source_name = Column(String)
+    source_phone = Column(String)
+    ngo = Column(String)
+    added_by = Column(String)
+    enumerator = Column(String)
+    source_remarks = Column(Text)
+    alt_phone = Column(String)
+    followup_preference = Column(String)
+    spending_amount = Column(Integer, default=0)
+    
     client = relationship("Client")
 
 class CallLog(Base):
     __tablename__ = "call_logs"
     id = Column(Integer, primary_key=True, index=True)
+    call_date = Column(DateTime, default=datetime.datetime.utcnow)
     caller_name = Column(String)
-    phone = Column(String)
-    call_date = Column(DateTime)
+    source_of_number = Column(String)
+    age = Column(Integer)
     caller_type = Column(String)
-    reason = Column(String)
+    language = Column(String, default="Bangla")
+    is_repeat_caller = Column(String)
+    hear_about_us = Column(String)
+    reason_for_calling = Column(Text) # Multiple values joined or JSON
+    detailed_reasons = Column(Text) # Detailed sub-reasons
     district = Column(String)
     division = Column(String)
+    living_area = Column(String)
+    end_pregnancy_tried = Column(String)
+    purchased_mrm = Column(String)
+    mrm_medicine_name = Column(String)
+    medicine_taken = Column(String)
+    referred_status = Column(String)
+    followup_preference = Column(String)
+    phone = Column(String)
     duration = Column(String)
-    status = Column(String)
+    status = Column(String, default="Pending")
     notes = Column(Text)
 
 class Setting(Base):
@@ -70,6 +100,17 @@ class Waiver(Base):
     waiver_code = Column(String)
     remarks = Column(Text)
 
+class ClinicCenter(Base):
+    __tablename__ = "clinic_centers"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    address = Column(Text)
+    phone = Column(String)
+    district = Column(String)
+    center_type = Column(String)
+    contact_person = Column(String)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -78,5 +119,6 @@ class User(Base):
     password_hash = Column(String)
     role = Column(Enum(RoleEnum), default=RoleEnum.staff)
     is_active = Column(Boolean, default=True)
+    assigned_clinic = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)

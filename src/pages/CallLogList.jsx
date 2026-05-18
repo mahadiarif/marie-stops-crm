@@ -1,61 +1,56 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import API_URL from '../config';
+import axiosClient from '../api/axiosClient';
 import { 
-  Search, 
-  Filter, 
-  Eye, 
+  Phone,
+  Search,
+  Plus,
   Edit,
   Trash2,
-  PhoneCall, 
-  Plus, 
-  Clock, 
-  Calendar as CalendarIcon 
+  Eye,
+  Filter
 } from 'lucide-react';
 import './CallLogList.css';
 
 const CallLogList = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [callLogs, setCallLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [logs, setLogs] = useState([]);
+  const [, setLoading] = useState(true);
+
+  const fetchLogs = async () => {
+    try {
+      setLoading(true);
+      const res = await axiosClient.get(`/call-logs`);
+      setLogs(res.data);
+    } catch (err) {
+      console.error("Error fetching call logs:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get(`${API_URL}/call-logs`);
-        setCallLogs(response.data);
-      } catch (err) {
-        console.error("Error fetching call logs:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchLogs();
   }, []);
 
-  const handleView = (id) => {
-    navigate(`/call-logs/new?id=${id}&view=true`);
-  };
-
-  const handleEdit = (id) => {
-    navigate(`/call-logs/new?id=${id}`);
-  };
-
   const handleDelete = async (id) => {
-    if (window.confirm(`Are you sure you want to delete call log ${id}?`)) {
+    if (window.confirm('Delete this call log?')) {
       try {
-        await axios.delete(`${API_URL}/call-logs/${id}`);
-        setCallLogs(callLogs.filter(log => log.id !== id));
-        alert("Call log deleted successfully.");
+        await axiosClient.delete(`/call-logs/${id}`);
+        setLogs(logs.filter(l => l.id !== id));
       } catch (err) {
-        console.error("Error deleting call log:", err);
-        alert("Failed to delete call log.");
+        alert("Failed to delete.");
       }
     }
   };
+
+  const filteredLogs = useMemo(() => {
+    return logs.filter(log => 
+      log.caller_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.phone?.includes(searchTerm)
+    );
+  }, [logs, searchTerm]);
 
   return (
     <div className="list-page-container">
@@ -63,53 +58,31 @@ const CallLogList = () => {
         <div>
           <h1 className="page-title">Call Logs</h1>
           <div className="breadcrumb">
-            <PhoneCall size={14} />
-            <span>/ Call Logs / History</span>
+            <Phone size={14} />
+            <span>/ Call Logs / List</span>
           </div>
         </div>
         <button className="btn btn-primary" onClick={() => navigate('/call-logs/new')}>
-          <Plus size={18} />
-          New Call Log
+          <Plus size={18} /> Add New Call Log
         </button>
       </div>
 
-      <div className="stats-row">
-        <div className="stat-card mini">
-          <div className="stat-info">
-            <span className="stat-label">Total Calls Today</span>
-            <span className="stat-value">24</span>
-          </div>
-          <div className="stat-icon bg-indigo-50 text-indigo-600"><PhoneCall size={20} /></div>
-        </div>
-        <div className="stat-card mini">
-          <div className="stat-info">
-            <span className="stat-label">Average Duration</span>
-            <span className="stat-value">04:12</span>
-          </div>
-          <div className="stat-icon bg-emerald-50 text-emerald-600"><Clock size={20} /></div>
-        </div>
-      </div>
-
       <div className="card list-card">
-        <div className="list-toolbar">
-          <div className="search-box">
-            <Search size={18} className="search-icon" />
-            <input 
-              type="text" 
-              placeholder="Search by phone number or ID..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        <div className="list-toolbar-new">
+          <div className="filter-group">
+            <label>Search Logs</label>
+            <div className="search-wrapper">
+              <Search size={18} className="search-icon" />
+              <input 
+                type="text" 
+                placeholder="Search by name or phone..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
-          <div className="toolbar-actions">
-            <button className="btn btn-outline">
-              <CalendarIcon size={18} />
-              Date Range
-            </button>
-            <button className="btn btn-outline">
-              <Filter size={18} />
-              Filters
-            </button>
+          <div className="filter-group">
+            <button className="btn-search"><Filter size={16} /> Filters</button>
           </div>
         </div>
 
@@ -118,58 +91,43 @@ const CallLogList = () => {
             <thead>
               <tr>
                 <th>Log ID</th>
-                <th>Caller Phone</th>
-                <th>Date & Time</th>
+                <th>Caller Details</th>
                 <th>Caller Type</th>
                 <th>Reason</th>
+                <th>District</th>
                 <th>Duration</th>
                 <th>Status</th>
-                <th>Action</th>
+                <th>Date</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {callLogs.map((log) => (
+              {filteredLogs.map((log) => (
                 <tr key={log.id}>
-                  <td className="font-semibold text-primary">{log.id}</td>
-                  <td className="font-medium">{log.phone}</td>
-                  <td className="text-muted">{log.date}</td>
-                  <td>{log.type}</td>
-                  <td>{log.reason}</td>
-                  <td>{log.duration}</td>
+                  <td className="font-semibold text-primary">#{log.id}</td>
                   <td>
-                    <span className={`badge ${
-                      log.status === 'Resolved' ? 'badge-success' : 
-                      log.status === 'Appointment Set' ? 'badge-info' : 'badge-warning'
-                    }`}>
-                      {log.status}
-                    </span>
+                    <div className="client-info-cell">
+                      <span className="client-name">{log.caller_name}</span>
+                      <span className="client-phone">{log.phone}</span>
+                    </div>
                   </td>
+                  <td>{log.caller_type || '—'}</td>
+                  <td>{log.reason_for_calling || '—'}</td>
+                  <td>{log.district || '—'}</td>
+                  <td>{log.duration || '—'}</td>
+                  <td><span className={`badge ${log.status === 'Resolved' ? 'badge-success' : 'badge-warning'}`}>{log.status}</span></td>
+                  <td>{new Date(log.call_date).toLocaleDateString()}</td>
                   <td>
                     <div className="action-buttons">
-                      <button className="btn-icon" title="View Details" onClick={() => handleView(log.id)}>
-                        <Eye size={16} />
-                      </button>
-                      <button className="btn-icon" title="Edit Log" onClick={() => handleEdit(log.id)}>
-                        <Edit size={16} />
-                      </button>
-                      <button className="btn-icon text-danger" title="Delete Log" onClick={() => handleDelete(log.id)}>
-                        <Trash2 size={16} />
-                      </button>
+                      <button className="btn-icon" title="View" onClick={() => navigate(`/call-logs/new?id=${log.id}&view=true`)}><Eye size={16} /></button>
+                      <button className="btn-icon" title="Edit" onClick={() => navigate(`/call-logs/new?id=${log.id}`)}><Edit size={16} /></button>
+                      <button className="btn-icon text-danger" onClick={() => handleDelete(log.id)}><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-        
-        <div className="pagination-wrapper">
-          <span className="showing-text">Showing 1 to {callLogs.length} of {callLogs.length} entries</span>
-          <div className="pagination">
-            <button className="btn-page disabled">Previous</button>
-            <button className="btn-page active">1</button>
-            <button className="btn-page disabled">Next</button>
-          </div>
         </div>
       </div>
     </div>

@@ -8,15 +8,15 @@ import {
   Settings,
   LogOut,
   Bell,
-  Search,
   Menu,
   ChevronDown,
-  Plus,
   ClipboardList,
   User,
   Shield,
   HelpCircle,
-  FileText
+  FileText,
+  Building2,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Layout.css';
@@ -93,45 +93,71 @@ const Layout = () => {
           </NavLink>
           
           <div className="nav-group">RECORDS</div>
-          
+
           <NavLink to="/appointments" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
             <UserPlus size={20} />
             <span>Appointments</span>
           </NavLink>
-          
-          <NavLink to="/call-logs" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            <PhoneCall size={20} />
-            <span>Call Logs</span>
-          </NavLink>
-          
-          <NavLink to="/clients" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            <Users size={20} />
-            <span>Clients</span>
-          </NavLink>
 
-          <div className="nav-group">WAIVER</div>
-
-          <NavLink to="/waiver" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            <ClipboardList size={20} />
-            <span>Waiver List</span>
-          </NavLink>
-
-          <div className="nav-group">ANALYTICS</div>
-
-          {hasRole(['admin', 'manager']) && (
-            <NavLink to="/reports" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-              <FileText size={20} />
-              <span>Reports</span>
+          {hasRole(['admin', 'manager', 'staff']) && (
+            <NavLink to="/call-logs" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+              <PhoneCall size={20} />
+              <span>Call Logs</span>
             </NavLink>
           )}
 
-          <div className="nav-group">SYSTEM</div>
+          {hasRole(['admin', 'manager', 'staff']) && (
+            <NavLink to="/clients" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+              <Users size={20} />
+              <span>Clients</span>
+            </NavLink>
+          )}
+
+          <div className="nav-group">WAIVER</div>
+
+          {hasRole(['admin', 'manager', 'clinic']) && (
+            <NavLink to="/waiver" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+              <ClipboardList size={20} />
+              <span>Waiver List</span>
+            </NavLink>
+          )}
+
+          {hasRole(['admin', 'manager', 'clinic']) && (
+            <NavLink to="/clinic-entry" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+              <Building2 size={20} />
+              <span>Clinic List</span>
+            </NavLink>
+          )}
+
+          {hasRole(['admin', 'manager']) && (
+            <NavLink to="/agents" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+              <UserCheck size={20} />
+              <span>Agent Management</span>
+            </NavLink>
+          )}
+
+          {hasRole(['admin', 'manager']) && (
+            <>
+              <div className="nav-group">ANALYTICS</div>
+              <NavLink to="/reports" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                <FileText size={20} />
+                <span>Reports</span>
+              </NavLink>
+            </>
+          )}
 
           {hasRole('admin') && (
-            <NavLink to="/settings" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-              <Settings size={20} />
-              <span>Settings</span>
-            </NavLink>
+            <>
+              <div className="nav-group">SYSTEM</div>
+              <NavLink to="/users" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                <Shield size={20} />
+                <span>User Management</span>
+              </NavLink>
+              <NavLink to="/settings" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                <Settings size={20} />
+                <span>Settings</span>
+              </NavLink>
+            </>
           )}
         </nav>
 
