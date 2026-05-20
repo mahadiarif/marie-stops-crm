@@ -113,6 +113,8 @@
   margin-left: 260px;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
+  min-width: 0;
 }
 
 .top-header {

@@ -50,7 +50,8 @@ class Appointment(Base):
     alt_phone = Column(String)
     followup_preference = Column(String)
     spending_amount = Column(Integer, default=0)
-    
+    created_by_user_id = Column(Integer, nullable=True)
+
     client = relationship("Client")
 
 class CallLog(Base):
@@ -79,6 +80,7 @@ class CallLog(Base):
     duration = Column(String)
     status = Column(String, default="Pending")
     notes = Column(Text)
+    created_by_user_id = Column(Integer, nullable=True)
 
 class Setting(Base):
     __tablename__ = "settings"

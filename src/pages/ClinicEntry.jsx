@@ -479,7 +479,7 @@ const ClinicEntry = () => {
         <div className="card list-card">
           <div className="list-toolbar-new">
             <div className="filter-group">
-              <label>Search Client</label>
+              <label>Search</label>
               <div className="search-wrapper">
                 <Search size={18} className="search-icon" />
                 <input
@@ -490,6 +490,14 @@ const ClinicEntry = () => {
                 />
               </div>
             </div>
+            {searchTerm && (
+              <div className="filter-group button-group">
+                <button className="btn-search" style={{ background: '#64748b' }}
+                  onClick={() => setSearchTerm('')}>
+                  <X size={15} /> Reset
+                </button>
+              </div>
+            )}
           </div>
 
           {loading ? (

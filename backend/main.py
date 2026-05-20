@@ -41,7 +41,7 @@ class UserResponse(BaseModel):
 # Setup CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,6 +49,22 @@ app.add_middleware(
 
 # Initialize database
 models.Base.metadata.create_all(bind=database.engine)
+
+# Run migrations for new columns
+def run_migrations():
+    from sqlalchemy import text
+    with database.engine.connect() as conn:
+        for table, col in [
+            ("appointments", "created_by_user_id INTEGER"),
+            ("call_logs",    "created_by_user_id INTEGER"),
+        ]:
+            try:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col}"))
+                conn.commit()
+            except Exception:
+                pass  # Column already exists
+
+run_migrations()
 
 # AUTH ENDPOINTS
 @app.post("/auth/login", response_model=LoginResponse)
@@ -97,10 +113,10 @@ def register(
         )
 
     # Validate role
-    if req.role not in ["admin", "manager", "staff"]:
+    if req.role not in ["admin", "manager", "staff", "clinic"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid role. Must be admin, manager, or staff"
+            detail="Invalid role. Must be admin, manager, staff, or clinic"
         )
 
     # Create new user
@@ -219,7 +235,12 @@ def get_appointments(
     current_user: models.User = Depends(auth.verify_token),
     db: Session = Depends(database.get_db)
 ):
-    appointments = db.query(models.Appointment).all()
+    query = db.query(models.Appointment)
+    if current_user.role == models.RoleEnum.clinic and current_user.assigned_clinic:
+        query = query.filter(models.Appointment.clinic == current_user.assigned_clinic)
+    elif current_user.role == models.RoleEnum.staff:
+        query = query.filter(models.Appointment.created_by_user_id == current_user.id)
+    appointments = query.all()
     result = []
     for a in appointments:
         client = db.query(models.Client).filter(models.Client.id == a.client_id).first()
@@ -254,12 +275,34 @@ def get_appointments(
         })
     return result
 
+def _validate_appointment_refs(appointment_data: dict, db: Session):
+    clinic = appointment_data.get("clinic")
+    if clinic:
+        exists = db.query(models.Setting).filter(
+            models.Setting.category == "clinic",
+            models.Setting.value == clinic
+        ).first()
+        if not exists:
+            raise HTTPException(status_code=400, detail=f"Clinic '{clinic}' not found")
+
+    agent = appointment_data.get("agent_name")
+    if agent:
+        exists = db.query(models.Setting).filter(
+            models.Setting.category == "agentName",
+            models.Setting.value == agent
+        ).first()
+        if not exists:
+            raise HTTPException(status_code=400, detail=f"Agent '{agent}' not found")
+
+
 @app.post("/appointments")
 def create_appointment(
     appointment_data: dict,
     current_user: models.User = Depends(auth.verify_token),
     db: Session = Depends(database.get_db)
 ):
+    _validate_appointment_refs(appointment_data, db)
+
     # Extract client data
     client_name = appointment_data.pop("client_name", None)
     client_phone = appointment_data.pop("client_phone", None)
@@ -300,7 +343,8 @@ def create_appointment(
     # Filter only valid fields for the model
     valid_fields = {k: v for k, v in appointment_data.items() if hasattr(models.Appointment, k)}
     valid_fields["client_id"] = client.id
-    
+    valid_fields["created_by_user_id"] = current_user.id
+
     db_appt = models.Appointment(**valid_fields)
     db.add(db_appt)
     db.commit()
@@ -318,6 +362,9 @@ def update_appointment(
     if not db_appt:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
+    if current_user.role != models.RoleEnum.clinic:
+        _validate_appointment_refs(appointment_data, db)
+
     # Extract client data
     client_name = appointment_data.pop("client_name", None)
     client_phone = appointment_data.pop("client_phone", None)
@@ -334,7 +381,11 @@ def update_appointment(
             if address: client.address = address
             db.commit()
 
-    # Update appointment fields
+    # Clinic role can only update 3 fields
+    if current_user.role == models.RoleEnum.clinic:
+        allowed = {"visit_status_clinic", "followup_status_cc", "spending_amount"}
+        appointment_data = {k: v for k, v in appointment_data.items() if k in allowed}
+
     for key, value in appointment_data.items():
         if hasattr(db_appt, key):
             setattr(db_appt, key, value)
@@ -411,7 +462,10 @@ def get_call_logs(
     current_user: models.User = Depends(auth.verify_token),
     db: Session = Depends(database.get_db)
 ):
-    return db.query(models.CallLog).all()
+    query = db.query(models.CallLog)
+    if current_user.role == models.RoleEnum.staff:
+        query = query.filter(models.CallLog.created_by_user_id == current_user.id)
+    return query.all()
 
 @app.post("/call-logs")
 def create_call_log(
@@ -419,6 +473,7 @@ def create_call_log(
     current_user: models.User = Depends(auth.verify_token),
     db: Session = Depends(database.get_db)
 ):
+    log_data["created_by_user_id"] = current_user.id
     db_log = models.CallLog(**log_data)
     db.add(db_log)
     db.commit()
@@ -460,7 +515,10 @@ def get_waivers(
     current_user: models.User = Depends(auth.verify_token),
     db: Session = Depends(database.get_db)
 ):
-    return db.query(models.Waiver).all()
+    query = db.query(models.Waiver)
+    if current_user.role == models.RoleEnum.clinic and current_user.assigned_clinic:
+        query = query.filter(models.Waiver.center == current_user.assigned_clinic)
+    return query.all()
 
 @app.post("/waivers")
 def create_waiver(
@@ -468,6 +526,12 @@ def create_waiver(
     current_user: models.User = Depends(auth.verify_token),
     db: Session = Depends(database.get_db)
 ):
+    center = waiver_data.get("center")
+    if center:
+        exists = db.query(models.ClinicCenter).filter(models.ClinicCenter.name == center).first()
+        if not exists:
+            raise HTTPException(status_code=400, detail=f"Clinic center '{center}' not found")
+
     # Parse date
     if "date" in waiver_data and isinstance(waiver_data["date"], str):
         try:

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import { useAppData } from '../context/AppDataContext';
+import { useAuth } from '../context/AuthContext';
 import { Calendar, Trash2, Save, X, Send, Plus, Info, ArrowLeft } from 'lucide-react';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -10,6 +11,9 @@ import './AppointmentForm.css';
 // ── Pure form content (used by both modal and standalone page) ──
 export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, onSaved }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isClinicRole = user?.role === 'clinic';
+  const isStaffRole = user?.role === 'staff';
 
   const {
     clinics, ngos, reasons,
@@ -110,6 +114,26 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
   }, [editId, clientId]);
 
   const handleSave = async () => {
+    if (isClinicRole) {
+      try {
+        await axiosClient.put(`/appointments/${editId}`, {
+          visit_status_clinic: visitStatusClinic,
+          followup_status_cc: followupStatusCc,
+          spending_amount: parseInt(spendingAmount) || 0
+        });
+        setSuccessMessage(true);
+        setTimeout(() => {
+          setSuccessMessage(false);
+          if (onSaved) onSaved();
+          else if (onClose) onClose();
+          else navigate('/appointments');
+        }, 1500);
+      } catch (err) {
+        alert(`Failed to save: ${err.response?.data?.detail || err.message}`);
+      }
+      return;
+    }
+
     // Basic Validation
     if (!clientName || !phone || !selectedClinic || !selectedReason || !selectedAgent) {
       alert("Please fill in all required fields (Client Name, Phone, Clinic, Reason, Agent).");
@@ -120,6 +144,22 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
       if (!visitDate || isNaN(visitDate.getTime())) {
         alert("Please select a valid visit date.");
         return;
+      }
+
+      // Conflict check for staff on new appointments
+      if (isStaffRole && !editId) {
+        const allAppts = await axiosClient.get('/appointments');
+        const conflict = allAppts.data.find(a =>
+          a.client_phone === phone &&
+          a.visit_status_clinic !== 'Visited' &&
+          a.id !== parseInt(editId)
+        );
+        if (conflict) {
+          const proceed = window.confirm(
+            `Warning: This client already has an active appointment at ${conflict.clinic} on ${new Date(conflict.visit_date).toLocaleDateString()}.\n\nProceed anyway?`
+          );
+          if (!proceed) return;
+        }
       }
 
       const data = {
@@ -207,28 +247,28 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
           <div className="form-group">
             <label className="form-label">Client Name <span>*</span></label>
             <input type="text" className="form-control" placeholder="e.g. Nusrat Jahan"
-              value={clientName} onChange={(e) => setClientName(e.target.value)} readOnly={isViewOnly} />
+              value={clientName} onChange={(e) => setClientName(e.target.value)} readOnly={isViewOnly || isClinicRole} />
           </div>
           <div className="form-group">
             <label className="form-label">Contact No <span>*</span></label>
             <input type="text" className="form-control" placeholder="e.g. 01712345678"
-              value={phone} onChange={(e) => setPhone(e.target.value)} readOnly={isViewOnly} />
+              value={phone} onChange={(e) => setPhone(e.target.value)} readOnly={isViewOnly || isClinicRole} />
           </div>
           <div className="form-group">
             <label className="form-label">Alternative Contact No.</label>
             <input type="text" className="form-control" placeholder="e.g. 01811223344"
-              value={altPhone} onChange={(e) => setAltPhone(e.target.value)} readOnly={isViewOnly} />
+              value={altPhone} onChange={(e) => setAltPhone(e.target.value)} readOnly={isViewOnly || isClinicRole} />
           </div>
           <div className="form-group">
             <label className="form-label">Age</label>
             <input type="number" className="form-control" placeholder="e.g. 28"
-              value={age} onChange={(e) => setAge(e.target.value)} readOnly={isViewOnly} />
+              value={age} onChange={(e) => setAge(e.target.value)} readOnly={isViewOnly || isClinicRole} />
           </div>
         </div>
         <div className="form-group" style={{ marginTop: '1rem' }}>
           <label className="form-label">Detail Address</label>
           <textarea className="form-control" rows="2" placeholder="Enter detailed address..."
-            value={address} onChange={(e) => setAddress(e.target.value)} readOnly={isViewOnly} />
+            value={address} onChange={(e) => setAddress(e.target.value)} readOnly={isViewOnly || isClinicRole} />
         </div>
       </div>
 
@@ -239,7 +279,7 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
           <div className="form-group">
             <label className="form-label">Reason for Visit <span>*</span></label>
             <select className="form-control" value={selectedReason}
-              onChange={(e) => setSelectedReason(e.target.value)} disabled={isViewOnly}>
+              onChange={(e) => setSelectedReason(e.target.value)} disabled={isViewOnly || isClinicRole}>
               <option value="">-- Select Reason --</option>
               {reasons.map((r, i) => <option key={i} value={r}>{r}</option>)}
             </select>
@@ -247,7 +287,7 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
           <div className="form-group">
             <label className="form-label">Clinic to Visit <span>*</span></label>
             <select className="form-control" value={selectedClinic}
-              onChange={(e) => setSelectedClinic(e.target.value)} disabled={isViewOnly}>
+              onChange={(e) => setSelectedClinic(e.target.value)} disabled={isViewOnly || isClinicRole}>
               <option value="">-- Select Clinic --</option>
               {clinics.map((c, i) => <option key={i} value={c}>{c}</option>)}
             </select>
@@ -256,12 +296,12 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
             <label className="form-label">Visit Date <span>*</span></label>
             <DatePicker selected={visitDate} onChange={(d) => setVisitDate(d)}
               showTimeSelect dateFormat="Pp" className="form-control"
-              readOnly={isViewOnly} disabled={isViewOnly} />
+              readOnly={isViewOnly || isClinicRole} disabled={isViewOnly || isClinicRole} />
           </div>
           <div className="form-group">
             <label className="form-label">Agent Name <span>*</span></label>
             <select className="form-control" value={selectedAgent}
-              onChange={(e) => setSelectedAgent(e.target.value)} disabled={isViewOnly}>
+              onChange={(e) => setSelectedAgent(e.target.value)} disabled={isViewOnly || isClinicRole}>
               <option value="">-- Select Agent --</option>
               {agentNames.map((a, i) => <option key={i} value={a}>{a}</option>)}
             </select>
@@ -269,7 +309,7 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
           <div className="form-group">
             <label className="form-label">Referral Fee Received</label>
             <select className="form-control" value={referralFee}
-              onChange={(e) => setReferralFee(e.target.value)} disabled={isViewOnly}>
+              onChange={(e) => setReferralFee(e.target.value)} disabled={isViewOnly || isClinicRole}>
               <option value="No">No</option>
               <option value="Yes">Yes</option>
             </select>
@@ -277,7 +317,7 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
           <div className="form-group">
             <label className="form-label">Reconfirmation</label>
             <select className="form-control" value={reconfirmation}
-              onChange={(e) => setReconfirmation(e.target.value)} disabled={isViewOnly}>
+              onChange={(e) => setReconfirmation(e.target.value)} disabled={isViewOnly || isClinicRole}>
               <option value="Okay">Okay</option>
               <option value="Not Okay">Not Okay</option>
               <option value="No Response">No Response</option>
@@ -288,12 +328,12 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
         <div className="form-group" style={{ marginTop: '1rem' }}>
           <label className="form-label">Remarks</label>
           <textarea className="form-control" rows="2" placeholder="Enter remarks..."
-            value={remarks} onChange={(e) => setRemarks(e.target.value)} readOnly={isViewOnly} />
+            value={remarks} onChange={(e) => setRemarks(e.target.value)} readOnly={isViewOnly || isClinicRole} />
         </div>
         <div className="form-group" style={{ marginTop: '0.75rem' }}>
           <div className="checkbox-item">
             <input type="checkbox" id="unsafeContact" checked={unsafeToCall}
-              onChange={(e) => setUnsafeToCall(e.target.checked)} disabled={isViewOnly} />
+              onChange={(e) => setUnsafeToCall(e.target.checked)} disabled={isViewOnly || isClinicRole} />
             <label htmlFor="unsafeContact"><strong>Is it unsafe to call?</strong> (Use SMS/WhatsApp instead)</label>
           </div>
         </div>
@@ -366,14 +406,14 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
               placeholder="e.g. 2500"
               value={spendingAmount}
               onChange={(e) => setSpendingAmount(e.target.value)}
-              readOnly={isViewOnly}
+              readOnly={isViewOnly || isStaffRole}
               min="0"
             />
           </div>
           <div className="form-group">
             <label className="form-label">Visit Status by Clinic</label>
             <select className="form-control" value={visitStatusClinic}
-              onChange={(e) => setVisitStatusClinic(e.target.value)} disabled={isViewOnly}>
+              onChange={(e) => setVisitStatusClinic(e.target.value)} disabled={isViewOnly || isStaffRole}>
               <option value="">-- Select Status --</option>
               {visitStatus.map((s, i) => <option key={i} value={s}>{s}</option>)}
             </select>
@@ -389,7 +429,7 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
           <div className="form-group">
             <label className="form-label">Follow up Preference</label>
             <select className="form-control" value={followupPreference}
-              onChange={(e) => setFollowupPreference(e.target.value)} disabled={isViewOnly}>
+              onChange={(e) => setFollowupPreference(e.target.value)} disabled={isViewOnly || isClinicRole}>
               <option value="Call Only">Call Only</option>
               <option value="SMS Only">SMS Only</option>
               <option value="Call & SMS">Call & SMS</option>
@@ -422,7 +462,7 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
           <h3 className="section-title" style={{ margin: 0 }}>Generated From (Referral)</h3>
           <div className="checkbox-item">
             <input type="checkbox" id="isReferral" checked={isReferral}
-              onChange={(e) => setIsReferral(e.target.checked)} disabled={isViewOnly} />
+              onChange={(e) => setIsReferral(e.target.checked)} disabled={isViewOnly || isClinicRole} />
             <label htmlFor="isReferral" style={{ fontWeight: 600 }}>Referral</label>
           </div>
         </div>
@@ -432,17 +472,17 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
               <div className="form-group">
                 <label className="form-label">Name</label>
                 <input type="text" className="form-control" placeholder="Source Name"
-                  value={sourceName} onChange={(e) => setSourceName(e.target.value)} readOnly={isViewOnly} />
+                  value={sourceName} onChange={(e) => setSourceName(e.target.value)} readOnly={isViewOnly || isClinicRole} />
               </div>
               <div className="form-group">
                 <label className="form-label">Phone Number</label>
                 <input type="text" className="form-control" placeholder="Source Phone"
-                  value={sourcePhone} onChange={(e) => setSourcePhone(e.target.value)} readOnly={isViewOnly} />
+                  value={sourcePhone} onChange={(e) => setSourcePhone(e.target.value)} readOnly={isViewOnly || isClinicRole} />
               </div>
               <div className="form-group">
                 <label className="form-label">NGO</label>
                 <select className="form-control" value={selectedNgo}
-                  onChange={(e) => setSelectedNgo(e.target.value)} disabled={isViewOnly}>
+                  onChange={(e) => setSelectedNgo(e.target.value)} disabled={isViewOnly || isClinicRole}>
                   <option value="">-- Select NGO --</option>
                   {ngos.map((n, i) => <option key={i} value={n}>{n}</option>)}
                 </select>
@@ -450,7 +490,7 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
               <div className="form-group">
                 <label className="form-label">Added By</label>
                 <select className="form-control" value={selectedAddedBy}
-                  onChange={(e) => setSelectedAddedBy(e.target.value)} disabled={isViewOnly}>
+                  onChange={(e) => setSelectedAddedBy(e.target.value)} disabled={isViewOnly || isClinicRole}>
                   <option value="">-- Select Agent --</option>
                   {addedByList.map((a, i) => <option key={i} value={a}>{a}</option>)}
                 </select>
@@ -458,7 +498,7 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
               <div className="form-group">
                 <label className="form-label">Enumerator</label>
                 <select className="form-control" value={selectedEnumerator}
-                  onChange={(e) => setSelectedEnumerator(e.target.value)} disabled={isViewOnly}>
+                  onChange={(e) => setSelectedEnumerator(e.target.value)} disabled={isViewOnly || isClinicRole}>
                   <option value="">-- Select Enumerator --</option>
                   {enumerators.map((e, i) => <option key={i} value={e}>{e}</option>)}
                 </select>
@@ -471,7 +511,7 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
             <div className="form-group" style={{ marginTop: '1rem' }}>
               <label className="form-label">Remarks</label>
               <textarea className="form-control" rows="2" placeholder="Enter remarks..."
-                value={sourceRemarks} onChange={(e) => setSourceRemarks(e.target.value)} readOnly={isViewOnly} />
+                value={sourceRemarks} onChange={(e) => setSourceRemarks(e.target.value)} readOnly={isViewOnly || isClinicRole} />
             </div>
           </div>
         )}
@@ -483,7 +523,7 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
       </div>
 
       {/* ── Footer Buttons ── */}
-      {!isViewOnly && (
+      {!isViewOnly && (!isClinicRole || editId) && (
         <div className="form-footer">
           <button className="btn btn-success btn-lg" onClick={handleSave}>
             <Save size={18} /> Save / Approve

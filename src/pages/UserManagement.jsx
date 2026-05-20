@@ -1,19 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, UserPlus, Shield, Edit, Trash2, Key, X, Save, ArrowLeft, Users, LogIn } from 'lucide-react';
+import { Search, UserPlus, Shield, Edit, Trash2, X, Save, ArrowLeft, Users, LogIn } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { useAppData } from '../context/AppDataContext';
 import { useAuth } from '../context/AuthContext';
 import './UserManagement.css';
 
+const PAGE_SIZE = 10;
 const emptyForm = { username: '', password: '', role: 'staff', email: '', is_active: true, assigned_clinic: '' };
 
 const UserManagement = () => {
   const { clinics, refetchAll } = useAppData();
-  const { login } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
@@ -101,10 +104,16 @@ const UserManagement = () => {
     }
   };
 
-  const filteredUsers = users.filter(u =>
-    u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredUsers = useMemo(() => {
+    const term = appliedSearch.toLowerCase();
+    return users.filter(u =>
+      (!term || u.username.toLowerCase().includes(term) || u.email?.toLowerCase().includes(term)) &&
+      (!roleFilter || u.role === roleFilter)
+    );
+  }, [users, appliedSearch, roleFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+  const paginated  = filteredUsers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const roleLabel = { admin: 'Admin', manager: 'Manager', staff: 'Staff (CC)', clinic: 'Clinic User' };
 
@@ -235,29 +244,39 @@ const UserManagement = () => {
       <div className="card list-card">
         <div className="list-toolbar-new">
           <div className="filter-group">
-            <label>Search Users</label>
+            <label>Search</label>
             <div className="search-wrapper">
               <Search size={18} className="search-icon" />
               <input
                 type="text"
-                placeholder="Search by username or email..."
+                placeholder="Username or email..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={e => setSearchTerm(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { setAppliedSearch(searchTerm); setCurrentPage(1); } }}
               />
             </div>
           </div>
           <div className="filter-group">
-            <label>Role Filter</label>
-            <select className="uniform-input">
+            <label>Role</label>
+            <select className="uniform-input" value={roleFilter}
+              onChange={e => { setRoleFilter(e.target.value); setCurrentPage(1); }}>
               <option value="">All Roles</option>
               <option value="admin">Admin</option>
               <option value="manager">Manager</option>
-              <option value="staff">Staff (Call Center)</option>
+              <option value="staff">Staff (CC)</option>
               <option value="clinic">Clinic User</option>
             </select>
           </div>
           <div className="filter-group button-group">
-            <button className="btn-search"><Search size={16} /> Filter</button>
+            <button className="btn-search" onClick={() => { setAppliedSearch(searchTerm); setCurrentPage(1); }}>
+              <Search size={16} /> Search
+            </button>
+            {(appliedSearch || roleFilter) && (
+              <button className="btn-search" style={{ background: '#64748b' }}
+                onClick={() => { setSearchTerm(''); setAppliedSearch(''); setRoleFilter(''); setCurrentPage(1); }}>
+                <X size={15} /> Reset
+              </button>
+            )}
           </div>
         </div>
 
@@ -265,24 +284,26 @@ const UserManagement = () => {
           <table>
             <thead>
               <tr>
+                <th>#</th>
                 <th>Username</th>
-                <th>Email Address</th>
+                <th>Email</th>
                 <th>Role</th>
                 <th>Assigned Clinic</th>
                 <th>Status</th>
-                <th className="text-right">Actions</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map(user => (
+              {paginated.map((user, i) => (
                 <tr key={user.id}>
+                  <td className="text-muted" style={{ fontSize: '0.8rem' }}>{(currentPage - 1) * PAGE_SIZE + i + 1}</td>
                   <td>
                     <div className="user-cell">
                       <div className="user-avatar-sm">{user.username.substring(0, 2).toUpperCase()}</div>
                       <span className="font-semibold">{user.username}</span>
                     </div>
                   </td>
-                  <td>{user.email || 'N/A'}</td>
+                  <td>{user.email || '—'}</td>
                   <td>
                     <span className={`role-badge ${user.role}`}>
                       <Shield size={12} /> {roleLabel[user.role] || user.role}
@@ -294,29 +315,40 @@ const UserManagement = () => {
                       {user.is_active ? 'Active' : 'Disabled'}
                     </span>
                   </td>
-                  <td className="text-right">
-                    <div className="action-buttons justify-end">
-                      <button className="btn-icon" title="Edit User" onClick={() => openForm(user)}>
-                        <Edit size={16} />
-                      </button>
+                  <td>
+                    <div className="action-buttons">
+                      <button className="btn-icon" title="Edit" onClick={() => openForm(user)}><Edit size={16} /></button>
                       {user.role === 'clinic' && (
-                        <button className="btn-icon" title="Login as this Clinic" onClick={() => handleImpersonate(user.id)}
-                          style={{ color: '#005CB9' }}>
+                        <button className="btn-icon" title="Login as Clinic" onClick={() => handleImpersonate(user.id)} style={{ color: '#005CB9' }}>
                           <LogIn size={16} />
                         </button>
                       )}
-                      <button className="btn-icon text-danger" title="Delete User" onClick={() => handleDelete(user.id)}>
-                        <Trash2 size={16} />
-                      </button>
+                      <button className="btn-icon text-danger" title="Delete" onClick={() => handleDelete(user.id)}><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>
               ))}
-              {filteredUsers.length === 0 && (
-                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No users found.</td></tr>
+              {paginated.length === 0 && (
+                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No users found.</td></tr>
               )}
             </tbody>
           </table>
+        </div>
+        <div className="pagination-bar">
+          <span className="pagination-info">
+            Showing {filteredUsers.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredUsers.length)} of {filteredUsers.length}
+          </span>
+          <div className="pagination-controls">
+            <button className="page-btn" onClick={() => setCurrentPage(p => Math.max(1, p-1))} disabled={currentPage === 1}>Previous</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+              .reduce((acc, p, idx, arr) => { if (idx > 0 && p - arr[idx-1] > 1) acc.push('...'); acc.push(p); return acc; }, [])
+              .map((p, idx) => p === '...'
+                ? <span key={`e${idx}`} className="page-ellipsis">…</span>
+                : <button key={p} className={`page-btn ${p === currentPage ? 'active' : ''}`} onClick={() => setCurrentPage(p)}>{p}</button>
+              )}
+            <button className="page-btn" onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))} disabled={currentPage === totalPages}>Next</button>
+          </div>
         </div>
       </div>
     </div>

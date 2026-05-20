@@ -130,13 +130,6 @@ const Layout = () => {
           )}
 
           {hasRole(['admin', 'manager']) && (
-            <NavLink to="/agents" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-              <UserCheck size={20} />
-              <span>Agent Management</span>
-            </NavLink>
-          )}
-
-          {hasRole(['admin', 'manager']) && (
             <>
               <div className="nav-group">ANALYTICS</div>
               <NavLink to="/reports" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
@@ -153,11 +146,21 @@ const Layout = () => {
                 <Shield size={20} />
                 <span>User Management</span>
               </NavLink>
-              <NavLink to="/settings" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                <Settings size={20} />
-                <span>Settings</span>
-              </NavLink>
             </>
+          )}
+
+          {hasRole(['admin', 'manager']) && (
+            <NavLink to="/agents" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+              <UserCheck size={20} />
+              <span>Agent Management</span>
+            </NavLink>
+          )}
+
+          {hasRole('admin') && (
+            <NavLink to="/settings" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+              <Settings size={20} />
+              <span>Settings</span>
+            </NavLink>
           )}
         </nav>
 
