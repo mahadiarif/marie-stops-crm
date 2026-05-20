@@ -25,7 +25,7 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axiosClient.get('/users/');
+      const response = await axiosClient.get('/users');
       setUsers(response.data);
     } catch {
       setUsers([
