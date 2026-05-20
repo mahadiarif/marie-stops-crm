@@ -273,6 +273,9 @@ const Layout = () => {
         <div className="content-area">
           <Outlet />
         </div>
+        <footer className="app-footer">
+          Copyright &copy; MetroNet Bangladesh Ltd. All rights reserved.
+        </footer>
       </main>
     </div>
   );

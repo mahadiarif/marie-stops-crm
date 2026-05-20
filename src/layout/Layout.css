@@ -481,6 +481,15 @@
   transform: rotate(180deg);
 }
 
+.app-footer {
+  text-align: center;
+  padding: 1rem 2rem;
+  font-size: 0.75rem;
+  color: var(--text-light);
+  border-top: 1px solid var(--border-color);
+  background: white;
+}
+
 .btn-link {
   background: none;
   border: none;
