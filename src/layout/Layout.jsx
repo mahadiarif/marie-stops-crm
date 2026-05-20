@@ -122,7 +122,7 @@ const Layout = () => {
                 <ClipboardList size={20} /><span>Discount Tracking</span>
               </NavLink>
             )}
-            {can('clinic_data') && (
+            {can('clinic_data') && !hasRole('clinic') && (
               <NavLink to="/clinic-entry" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                 <Building2 size={20} /><span>Clinic List</span>
               </NavLink>
