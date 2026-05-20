@@ -40,6 +40,7 @@ const Layout = () => {
   const { can } = usePermissions();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const notificationsRef = useRef(null);
   const profileRef = useRef(null);
@@ -93,7 +94,8 @@ const Layout = () => {
 
   return (
     <div className="app-container">
-      <aside className="sidebar">
+      {mobileSidebarOpen && <div className="sidebar-overlay" onClick={() => setMobileSidebarOpen(false)} />}
+      <aside className={`sidebar${mobileSidebarOpen ? ' sidebar-mobile-open' : ''}`}
         <div className="sidebar-header">
           <div className="logo-container">
             <img src="/logo.webp" alt="Marie Stopes Logo" className="app-logo" />
@@ -170,7 +172,7 @@ const Layout = () => {
       <main className="main-content">
         <header className="top-header">
           <div className="header-left">
-            <button className="mobile-menu-btn">
+            <button className="mobile-menu-btn" onClick={() => setMobileSidebarOpen(o => !o)}>
               <Menu size={24} />
             </button>
           </div>
