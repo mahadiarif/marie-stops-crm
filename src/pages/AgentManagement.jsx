@@ -52,18 +52,20 @@ const AgentManagement = () => {
     const name = agentForm.name.trim();
     if (!name) return;
     if (agentNames.includes(name)) { alert('Agent already exists.'); return; }
+    if (!agentForm.username.trim() || !agentForm.password.trim()) {
+      alert('Username and password are required.');
+      return;
+    }
     setSaving(true);
     try {
       await addAgentName(name);
-      if (agentForm.username.trim() && agentForm.password.trim()) {
-        await axiosClient.post('/auth/register', {
-          username: agentForm.username.trim(),
-          password: agentForm.password.trim(),
-          email: agentForm.email.trim() || `${agentForm.username.trim()}@mariestopes.org`,
-          role: 'staff',
-          agent_name: name,
-        });
-      }
+      await axiosClient.post('/auth/register', {
+        username: agentForm.username.trim(),
+        password: agentForm.password.trim(),
+        email: agentForm.email.trim() || `${agentForm.username.trim()}@mariestopes.org`,
+        role: 'staff',
+        agent_name: name,
+      });
       resetForm();
       setShowForm(false);
     } catch (err) {
@@ -115,19 +117,16 @@ const AgentManagement = () => {
 
               <div className="form-section" style={{ marginTop: '1.5rem' }}>
                 <h3 className="section-title">System Login Account</h3>
-                <p style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: '1rem' }}>
-                  Create a call center (staff) login for this agent. Leave blank to skip.
-                </p>
                 <div className="grid-2">
                   <div className="form-group">
-                    <label className="form-label">Username</label>
+                    <label className="form-label">Username <span>*</span></label>
                     <input type="text" className="form-control" placeholder="e.g. zeba.akter"
-                      value={agentForm.username} onChange={e => setAgentForm(p => ({ ...p, username: e.target.value }))} />
+                      value={agentForm.username} onChange={e => setAgentForm(p => ({ ...p, username: e.target.value }))} required />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Password</label>
+                    <label className="form-label">Password <span>*</span></label>
                     <input type="password" className="form-control" placeholder="Enter password"
-                      value={agentForm.password} onChange={e => setAgentForm(p => ({ ...p, password: e.target.value }))} />
+                      value={agentForm.password} onChange={e => setAgentForm(p => ({ ...p, password: e.target.value }))} required />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Email (optional)</label>
