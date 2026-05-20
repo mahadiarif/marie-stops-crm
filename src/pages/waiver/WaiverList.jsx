@@ -148,6 +148,7 @@ const WaiverList = () => {
                 <th>Discount Code</th>
                 <th>Client Name</th>
                 <th>Client ID</th>
+                <th>Discount Client ID</th>
                 <th>Service</th>
                 <th>Center</th>
                 <th>Date</th>
@@ -159,7 +160,7 @@ const WaiverList = () => {
             </thead>
             <tbody>
               {paginated.length === 0 && (
-                <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No discounts found.</td></tr>
+                <tr><td colSpan="12" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No discounts found.</td></tr>
               )}
               {paginated.map((waiver, i) => (
                 <tr key={waiver.id}>
@@ -167,6 +168,7 @@ const WaiverList = () => {
                   <td className="font-semibold text-primary">{waiver.waiver_code}</td>
                   <td>{waiver.first_name}</td>
                   <td>{waiver.client_id_code || '—'}</td>
+                  <td>{waiver.discount_client_id || '—'}</td>
                   <td>{waiver.service}</td>
                   <td>{waiver.center}</td>
                   <td>{waiver.date ? new Date(waiver.date).toLocaleDateString() : '—'}</td>
@@ -188,7 +190,7 @@ const WaiverList = () => {
             {filtered.length > 0 && (
               <tfoot>
                 <tr style={{ background: '#f0f7ff', borderTop: '2px solid #e2e8f0' }}>
-                  <td colSpan={7} style={{ textAlign: 'right', fontWeight: 700, color: '#475569', fontSize: '0.85rem' }}>Total:</td>
+                  <td colSpan={8} style={{ textAlign: 'right', fontWeight: 700, color: '#475569', fontSize: '0.85rem' }}>Total:</td>
                   <td style={{ fontWeight: 700, color: '#1e293b' }}>
                     ৳{filtered.reduce((s, w) => s + (w.total_price || 0), 0).toLocaleString()}
                   </td>
