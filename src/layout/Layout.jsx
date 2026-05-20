@@ -95,7 +95,7 @@ const Layout = () => {
   return (
     <div className="app-container">
       {mobileSidebarOpen && <div className="sidebar-overlay" onClick={() => setMobileSidebarOpen(false)} />}
-      <aside className={`sidebar${mobileSidebarOpen ? ' sidebar-mobile-open' : ''}`}
+      <aside className={`sidebar${mobileSidebarOpen ? ' sidebar-mobile-open' : ''}`}>
         <div className="sidebar-header">
           <div className="logo-container">
             <img src="/logo.webp" alt="Marie Stopes Logo" className="app-logo" />
