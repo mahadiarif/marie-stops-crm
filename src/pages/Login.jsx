@@ -41,8 +41,8 @@ export default function Login() {
             Integrated CRM Platform<br />for Clinical Operations
           </div>
           <div className="login-left-sub">
-            Manage appointments, call logs,<br />
-            waivers and clinic data — all in one place.
+            Manage appointments, discounts<br />
+            and clinic data — all in one place.
           </div>
           <div className="login-left-badge">Marie Stopes Bangladesh</div>
         </div>

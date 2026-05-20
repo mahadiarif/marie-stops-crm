@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppData } from '../context/AppDataContext';
 import { useAuth } from '../context/AuthContext';
-import { Users, Calendar, PhoneIncoming, TrendingUp, Building2 } from 'lucide-react'; // Building2 used in clinic stats
+import { Users, Calendar, TrendingUp, Building2 } from 'lucide-react';
 import './Dashboard.css';
 
 const DASH_PAGE_SIZE = 10;
@@ -10,13 +10,12 @@ const DASH_PAGE_SIZE = 10;
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { appointments, callLogs, clients, waivers } = useAppData();
+  const { appointments, waivers } = useAppData();
 
   const role = user?.role;
   const assignedClinic = user?.assignedClinic;
 
   const [apptPage, setApptPage] = useState(1);
-  const [callPage, setCallPage] = useState(1);
 
   // For clinic role, appointments are already filtered by backend
   // For waivers/callLogs, filter in frontend by assignedClinic
@@ -27,44 +26,41 @@ const Dashboard = () => {
   [role, assignedClinic, waivers]);
 
   const stats = useMemo(() => {
+    const visited = appointments.filter(a => a.visitStatus === 'Visited').length;
+    const pending = appointments.filter(a => !a.visitStatus || a.visitStatus === '—' || a.visitStatus === '').length;
+    const totalSpending = appointments.reduce((s, a) => s + (a.spendingAmount || 0), 0);
+
     if (role === 'staff') {
       return [
-        { title: 'Total Calls', value: callLogs.length, icon: PhoneIncoming, color: '#10b981' },
         { title: 'Appointments Booked', value: appointments.length, icon: Calendar, color: '#005CB9' },
-        { title: 'Total Clients', value: clients.length, icon: Users, color: '#f59e0b' },
+        { title: 'Visited', value: visited, icon: Users, color: '#10b981' },
+        { title: 'Pending Visit', value: pending, icon: TrendingUp, color: '#f59e0b' },
+        { title: 'Total Spending (৳)', value: `৳${totalSpending.toLocaleString()}`, icon: Building2, color: '#e4007e' },
       ];
     }
     if (role === 'clinic') {
-      const visited = appointments.filter(a => a.visitStatus && a.visitStatus !== '—' && a.visitStatus !== '');
-      const totalSpending = appointments.reduce((s, a) => s + (a.spendingAmount || 0), 0);
       return [
         { title: 'Appointments', value: appointments.length, icon: Calendar, color: '#005CB9' },
-        { title: 'Visited', value: visited.length, icon: Users, color: '#10b981' },
-        { title: 'Waivers', value: clinicWaivers.length, icon: TrendingUp, color: '#e4007e' },
+        { title: 'Visited', value: visited, icon: Users, color: '#10b981' },
+        { title: 'Discounts', value: clinicWaivers.length, icon: TrendingUp, color: '#e4007e' },
         { title: 'Total Spending (৳)', value: `৳${totalSpending.toLocaleString()}`, icon: Building2, color: '#f59e0b' },
       ];
     }
     return [
       { title: 'Total Appointments', value: appointments.length, icon: Calendar, color: '#005CB9' },
-      { title: 'Inbound Calls', value: callLogs.length, icon: PhoneIncoming, color: '#10b981' },
-      { title: 'Total Clients', value: clients.length, icon: Users, color: '#f59e0b' },
-      { title: 'Total Waivers', value: waivers.length, icon: TrendingUp, color: '#e4007e' },
+      { title: 'Visited', value: visited, icon: Users, color: '#10b981' },
+      { title: 'Total Discounts', value: waivers.length, icon: TrendingUp, color: '#e4007e' },
+      { title: 'Total Spending (৳)', value: `৳${totalSpending.toLocaleString()}`, icon: Building2, color: '#f59e0b' },
     ];
-  }, [role, appointments, callLogs, clients, waivers, clinicWaivers]);
+  }, [role, appointments, waivers, clinicWaivers]);
 
   const sortedAppointments = useMemo(() => [...appointments].sort((a, b) => b.id - a.id), [appointments]);
-  const sortedCalls = useMemo(() => [...callLogs].sort((a, b) => b.id - a.id), [callLogs]);
 
   const apptTotalPages = Math.max(1, Math.ceil(sortedAppointments.length / DASH_PAGE_SIZE));
-  const callTotalPages = Math.max(1, Math.ceil(sortedCalls.length / DASH_PAGE_SIZE));
 
   const recentAppointments = useMemo(() =>
     sortedAppointments.slice((apptPage - 1) * DASH_PAGE_SIZE, apptPage * DASH_PAGE_SIZE),
   [sortedAppointments, apptPage]);
-
-  const recentCalls = useMemo(() =>
-    sortedCalls.slice((callPage - 1) * DASH_PAGE_SIZE, callPage * DASH_PAGE_SIZE),
-  [sortedCalls, callPage]);
 
   const roleLabel = {
     admin: 'Admin Overview',
@@ -108,60 +104,7 @@ const Dashboard = () => {
       <div className="dashboard-content">
         <div className="content-main" style={{ width: '100%' }}>
 
-          {role === 'staff' ? (
-            <div className="card">
-              <div className="card-header">
-                <h3 className="card-title">Recent Call Logs</h3>
-                <button className="btn-text" onClick={() => navigate('/call-logs')}>View All</button>
-              </div>
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Caller Name</th>
-                      <th>Phone</th>
-                      <th>Caller Type</th>
-                      <th>Reason</th>
-                      <th>District</th>
-                      <th>Status</th>
-                      <th>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentCalls.length > 0 ? recentCalls.map((log) => (
-                      <tr key={log.id}>
-                        <td className="font-semibold">{log.callerName}</td>
-                        <td>{log.phone || '—'}</td>
-                        <td>{log.callerType || '—'}</td>
-                        <td>{log.reason || '—'}</td>
-                        <td>{log.district || '—'}</td>
-                        <td>
-                          <span className={`badge ${log.status === 'Resolved' ? 'badge-success' : 'badge-warning'}`}>
-                            {log.status}
-                          </span>
-                        </td>
-                        <td>{log.callDate ? new Date(log.callDate).toLocaleDateString() : '—'}</td>
-                      </tr>
-                    )) : (
-                      <tr><td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>No call logs found.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <div className="pagination-bar">
-                <span className="pagination-info">Showing {sortedCalls.length === 0 ? 0 : (callPage - 1) * DASH_PAGE_SIZE + 1}–{Math.min(callPage * DASH_PAGE_SIZE, sortedCalls.length)} of {sortedCalls.length}</span>
-                <div className="pagination-controls">
-                  <button className="page-btn" onClick={() => setCallPage(p => Math.max(1, p - 1))} disabled={callPage === 1}>Previous</button>
-                  {Array.from({ length: callTotalPages }, (_, i) => i + 1)
-                    .filter(p => p === 1 || p === callTotalPages || Math.abs(p - callPage) <= 1)
-                    .reduce((acc, p, idx, arr) => { if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...'); acc.push(p); return acc; }, [])
-                    .map((p, idx) => p === '...' ? <span key={`e${idx}`} className="page-ellipsis">…</span> : <button key={p} className={`page-btn ${p === callPage ? 'active' : ''}`} onClick={() => setCallPage(p)}>{p}</button>)}
-                  <button className="page-btn" onClick={() => setCallPage(p => Math.min(callTotalPages, p + 1))} disabled={callPage === callTotalPages}>Next</button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="card">
+          <div className="card">
               <div className="card-header">
                 <h3 className="card-title">
                   {role === 'clinic' ? `Recent Appointments — ${assignedClinic || 'My Clinic'}` : 'Recent Appointments'}
@@ -227,9 +170,7 @@ const Dashboard = () => {
                   <button className="page-btn" onClick={() => setApptPage(p => Math.min(apptTotalPages, p + 1))} disabled={apptPage === apptTotalPages}>Next</button>
                 </div>
               </div>
-            </div>
-          )}
-
+          </div>
         </div>
       </div>
     </div>

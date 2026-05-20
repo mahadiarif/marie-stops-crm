@@ -7,8 +7,6 @@ const Settings = () => {
   const {
     ngos, addNgo, removeNgo,
     reasons, addReason, removeReason,
-    addedByList, addAddedBy, removeAddedBy,
-    enumerators, addEnumerator, removeEnumerator,
     visitStatus, addVisitStatus, removeVisitStatus,
     followupStatus, addFollowupStatus, removeFollowupStatus,
     waiverServices, addWaiverService, removeWaiverService
@@ -16,8 +14,6 @@ const Settings = () => {
 
   const [newNgo, setNewNgo] = useState('');
   const [newReason, setNewReason] = useState('');
-  const [newAddedBy, setNewAddedBy] = useState('');
-  const [newEnumerator, setNewEnumerator] = useState('');
   const [newVisitStatus, setNewVisitStatus] = useState('');
   const [newFollowupStatus, setNewFollowupStatus] = useState('');
   const [newWaiverService, setNewWaiverService] = useState('');
@@ -33,16 +29,6 @@ const Settings = () => {
   const handleAddReason = (e) => {
     e.preventDefault();
     if (newReason.trim()) { addReason(newReason.trim()); setNewReason(''); }
-  };
-
-  const handleAddAddedBy = (e) => {
-    e.preventDefault();
-    if (newAddedBy.trim()) { addAddedBy(newAddedBy.trim()); setNewAddedBy(''); }
-  };
-
-  const handleAddEnumerator = (e) => {
-    e.preventDefault();
-    if (newEnumerator.trim()) { addEnumerator(newEnumerator.trim()); setNewEnumerator(''); }
   };
 
   const handleAddVisitStatus = (e) => {
@@ -130,7 +116,7 @@ const Settings = () => {
         <div className="card settings-card">
           <div className="settings-card-header">
             <ClipboardList size={24} className="text-primary" />
-            <h2>Waiver Services</h2>
+            <h2>Discount Services</h2>
           </div>
           <div className="settings-card-body">
             <form onSubmit={handleAddWaiverService} className="add-form">
@@ -148,49 +134,6 @@ const Settings = () => {
           </div>
         </div>
 
-        {/* Added By Manager */}
-        <div className="card settings-card">
-          <div className="settings-card-header">
-            <ClipboardList className="text-primary" size={24} />
-            <h2>Added By (Source)</h2>
-          </div>
-          <div className="settings-card-body">
-            <form onSubmit={handleAddAddedBy} className="add-form">
-              <input type="text" className="form-control" placeholder="Enter source..." value={newAddedBy} onChange={(e) => setNewAddedBy(e.target.value)} />
-              <button type="submit" className="btn btn-primary" disabled={!newAddedBy.trim()}><Plus size={18} /> Add</button>
-            </form>
-            <ul className="settings-list">
-              {addedByList.map((item, index) => (
-                <li key={index} className="settings-list-item">
-                  <span>{item}</span>
-                  <button onClick={() => removeAddedBy(item)} className="btn-icon text-danger" title="Remove"><Trash2 size={16} /></button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        {/* Enumerators Manager */}
-        <div className="card settings-card">
-          <div className="settings-card-header">
-            <ClipboardList className="text-primary" size={24} />
-            <h2>Enumerators</h2>
-          </div>
-          <div className="settings-card-body">
-            <form onSubmit={handleAddEnumerator} className="add-form">
-              <input type="text" className="form-control" placeholder="Enter enumerator..." value={newEnumerator} onChange={(e) => setNewEnumerator(e.target.value)} />
-              <button type="submit" className="btn btn-primary" disabled={!newEnumerator.trim()}><Plus size={18} /> Add</button>
-            </form>
-            <ul className="settings-list">
-              {enumerators.map((item, index) => (
-                <li key={index} className="settings-list-item">
-                  <span>{item}</span>
-                  <button onClick={() => removeEnumerator(item)} className="btn-icon text-danger" title="Remove"><Trash2 size={16} /></button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
 
         {/* Visit Status Manager */}
         <div className="card settings-card">

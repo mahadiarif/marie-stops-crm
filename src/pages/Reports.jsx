@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useAppData } from '../context/AppDataContext';
 import {
   FileText, Download, Printer, XCircle, Search,
-  Calendar, PhoneIncoming, Users, TrendingUp, Activity
+  Calendar, TrendingUp, TrendingDown, Activity
 } from 'lucide-react';
 import './Reports.css';
 
@@ -30,7 +30,7 @@ function exportCSV(rows, cols, filename) {
 }
 
 const Reports = () => {
-  const { appointments, callLogs, waivers, clinics, agentNames, followupStatus, visitStatus } = useAppData();
+  const { appointments, waivers, clinics, agentNames, followupStatus, visitStatus } = useAppData();
 
   const [activeTab, setActiveTab] = useState('appointments');
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,8 +41,6 @@ const Reports = () => {
   const [agentFilter, setAgentFilter] = useState('');
   const [visitStatusFilter, setVisitStatusFilter] = useState('');
   const [followupFilter, setFollowupFilter] = useState('');
-  const [callerTypeFilter, setCallerTypeFilter] = useState('');
-  const [callStatusFilter, setCallStatusFilter] = useState('');
 
   const applyQuickRange = (label) => {
     const range = QUICK_RANGES.find(r => r.label === label);
@@ -56,7 +54,7 @@ const Reports = () => {
   const clearFilters = () => {
     setSearchTerm(''); setFromDate(''); setToDate(''); setQuickRange('');
     setClinicFilter(''); setAgentFilter(''); setVisitStatusFilter('');
-    setFollowupFilter(''); setCallerTypeFilter(''); setCallStatusFilter('');
+    setFollowupFilter('');
   };
 
   const inRange = (dateStr) => {
@@ -79,16 +77,6 @@ const Reports = () => {
     );
   }, [appointments, searchTerm, fromDate, toDate, clinicFilter, agentFilter, visitStatusFilter, followupFilter]);
 
-  const filteredCalls = useMemo(() => {
-    const term = searchTerm.toLowerCase();
-    return callLogs.filter(c =>
-      (!term || c.callerName?.toLowerCase().includes(term) || c.phone?.includes(term)) &&
-      inRange(c.callDate) &&
-      (!callerTypeFilter || c.callerType === callerTypeFilter) &&
-      (!callStatusFilter || c.status === callStatusFilter)
-    );
-  }, [callLogs, searchTerm, fromDate, toDate, callerTypeFilter, callStatusFilter]);
-
   const filteredWaivers = useMemo(() => {
     const term = searchTerm.toLowerCase();
     return waivers.filter(w =>
@@ -104,11 +92,13 @@ const Reports = () => {
   const totalSpending = filteredAppts.reduce((s, a) => s + (a.spendingAmount || 0), 0);
   const totalWaiverPaid = filteredWaivers.reduce((s, w) => s + (w.paidAmount || 0), 0);
 
+  const totalDiscountGiven = filteredWaivers.reduce((s, w) => s + (w.waiverAmount || 0), 0);
+
   const kpis = [
     { label: 'Appointments', value: filteredAppts.length, sub: `${visitedCount} visited (${visitRate}%)`, icon: Calendar, color: '#4f46e5', bg: '#ede9fe' },
     { label: 'Total Spending', value: `৳${totalSpending.toLocaleString()}`, sub: 'from filtered appointments', icon: TrendingUp, color: '#059669', bg: '#d1fae5' },
-    { label: 'Call Logs', value: filteredCalls.length, sub: `${filteredCalls.filter(c => c.status === 'Pending').length} pending`, icon: PhoneIncoming, color: '#d97706', bg: '#fef3c7' },
-    { label: 'Waivers', value: filteredWaivers.length, sub: `৳${totalWaiverPaid.toLocaleString()} collected`, icon: Activity, color: '#0284c7', bg: '#e0f2fe' },
+    { label: 'Discounts', value: filteredWaivers.length, sub: `৳${totalWaiverPaid.toLocaleString()} collected`, icon: Activity, color: '#0284c7', bg: '#e0f2fe' },
+    { label: 'Total Discount (৳)', value: `৳${totalDiscountGiven.toLocaleString()}`, sub: 'discount amount given', icon: TrendingDown, color: '#dc2626', bg: '#fef2f2' },
   ];
 
   const handleExport = () => {
@@ -125,17 +115,6 @@ const Reports = () => {
         { label: 'Follow-up',      get: r => r.followup },
         { label: 'Spending (৳)',   get: r => r.spendingAmount },
       ], 'appointments_report.csv');
-    } else if (activeTab === 'calls') {
-      exportCSV(filteredCalls, [
-        { label: 'Date',        get: r => new Date(r.callDate).toLocaleDateString() },
-        { label: 'Caller Name', get: r => r.callerName },
-        { label: 'Phone',       get: r => r.phone },
-        { label: 'Type',        get: r => r.callerType },
-        { label: 'Reason',      get: r => r.reason },
-        { label: 'District',    get: r => r.district },
-        { label: 'Status',      get: r => r.status },
-        { label: 'Duration',    get: r => r.duration },
-      ], 'call_logs_report.csv');
     } else {
       exportCSV(filteredWaivers, [
         { label: 'Date',         get: r => new Date(r.date).toLocaleDateString() },
@@ -144,14 +123,12 @@ const Reports = () => {
         { label: 'Service',      get: r => r.service },
         { label: 'Center',       get: r => r.center },
         { label: 'Total (৳)',    get: r => r.totalPrice },
-        { label: 'Waiver (৳)',   get: r => r.waiverAmount },
+        { label: 'Discount (৳)', get: r => r.waiverAmount },
         { label: 'Paid (৳)',     get: r => r.paidAmount },
-      ], 'waivers_report.csv');
+      ], 'discounts_report.csv');
     }
   };
 
-  const callerTypes = [...new Set(callLogs.map(c => c.callerType).filter(Boolean))];
-  const callStatuses = [...new Set(callLogs.map(c => c.status).filter(Boolean))];
 
   return (
     <div className="reports-container">
@@ -267,23 +244,6 @@ const Reports = () => {
             </div>
           </>)}
 
-          {/* Call-specific filters */}
-          {activeTab === 'calls' && (<>
-            <div className="filter-group">
-              <label>Caller Type</label>
-              <select className="uniform-input" value={callerTypeFilter} onChange={e => setCallerTypeFilter(e.target.value)}>
-                <option value="">All Types</option>
-                {callerTypes.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div className="filter-group">
-              <label>Status</label>
-              <select className="uniform-input" value={callStatusFilter} onChange={e => setCallStatusFilter(e.target.value)}>
-                <option value="">All</option>
-                {callStatuses.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-          </>)}
 
           <div className="filter-group button-group">
             <button className="btn-search" style={{ background: '#64748b' }} onClick={clearFilters}>
@@ -295,7 +255,7 @@ const Reports = () => {
 
       {/* Tabs */}
       <div className="report-tabs no-print">
-        {[['appointments', `Appointments (${filteredAppts.length})`], ['calls', `Call Logs (${filteredCalls.length})`], ['waivers', `Waivers (${filteredWaivers.length})`]].map(([key, label]) => (
+        {[['appointments', `Appointments (${filteredAppts.length})`], ['waivers', `Discounts (${filteredWaivers.length})`]].map(([key, label]) => (
           <button key={key} className={`tab-btn ${activeTab === key ? 'active' : ''}`} onClick={() => setActiveTab(key)}>{label}</button>
         ))}
       </div>
@@ -350,35 +310,12 @@ const Reports = () => {
               )}
             </>)}
 
-            {/* CALLS */}
-            {activeTab === 'calls' && (<>
-              <thead><tr>
-                <th>#</th><th>Date</th><th>Caller Name</th><th>Phone</th>
-                <th>Type</th><th>Reason</th><th>District</th><th>Status</th><th>Duration</th>
-              </tr></thead>
-              <tbody>
-                {filteredCalls.map((c, i) => (
-                  <tr key={c.id}>
-                    <td className="text-muted" style={{ fontSize: '0.8rem' }}>{i + 1}</td>
-                    <td>{new Date(c.callDate).toLocaleDateString()}</td>
-                    <td className="font-semibold">{c.callerName}</td>
-                    <td>{c.phone}</td>
-                    <td>{c.callerType}</td>
-                    <td>{c.reason}</td>
-                    <td>{c.district}</td>
-                    <td><span className={`badge ${c.status === 'Pending' ? 'badge-warning' : 'badge-success'}`}>{c.status}</span></td>
-                    <td>{c.duration || '—'}</td>
-                  </tr>
-                ))}
-                {filteredCalls.length === 0 && <tr><td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No data found</td></tr>}
-              </tbody>
-            </>)}
 
             {/* WAIVERS */}
             {activeTab === 'waivers' && (<>
               <thead><tr>
                 <th>#</th><th>Date</th><th>Client ID</th><th>Name</th>
-                <th>Service</th><th>Center</th><th>Total (৳)</th><th>Waiver (৳)</th><th>Paid (৳)</th>
+                <th>Service</th><th>Center</th><th>Total (৳)</th><th>Discount (৳)</th><th>Paid (৳)</th>
               </tr></thead>
               <tbody>
                 {filteredWaivers.map((w, i) => (

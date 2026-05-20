@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppData } from '../../context/AppDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { Save, X, ArrowLeft, ClipboardList, Info } from 'lucide-react';
 import axiosClient from '../../api/axiosClient';
 import './NewWaiver.css';
@@ -8,12 +9,15 @@ import './NewWaiver.css';
 // ── Pure form content for modal/page ──
 export function WaiverFormContent({ editId, isViewOnly, onClose, onSaved }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isClinicRole = user?.role === 'clinic';
   const { clinics, waiverCenterPrefixes, waiverServices } = useAppData();
   
   const [formData, setFormData] = useState({
     date: new Date().toISOString().slice(0, 16),
     center: '',
     client_id_code: '',
+    discount_client_id: '',
     first_name: '',
     service: '',
     total_price: 0,
@@ -41,15 +45,20 @@ export function WaiverFormContent({ editId, isViewOnly, onClose, onSaved }) {
         } catch (err) {
           console.error("Waiver Save Error:", err);
           const errMsg = err.response?.data?.detail || err.message || "Unknown error";
-          alert(`Failed to save waiver: ${errMsg}`);
+          alert(`Failed to load: ${errMsg}`);
         }
       };
       fetchWaiver();
     } else {
       const randomCode = 'wv-' + Math.floor(10000 + Math.random() * 90000);
-      setFormData(prev => ({ ...prev, waiver_code: randomCode }));
+      setFormData(prev => ({
+        ...prev,
+        waiver_code: randomCode,
+        ...(isClinicRole && user?.assignedClinic ? { center: user.assignedClinic } : {})
+      }));
     }
   }, [editId]);
+
 
   useEffect(() => {
     if (formData.center && !editId) {
@@ -81,7 +90,7 @@ export function WaiverFormContent({ editId, isViewOnly, onClose, onSaved }) {
     }
 
     if (formData.waiver_amount > formData.total_price) {
-      alert("Amount of Waiver cannot exceed Total Service Price.");
+      alert("Discount amount cannot exceed Total Service Price.");
       return;
     }
 
@@ -102,7 +111,7 @@ export function WaiverFormContent({ editId, isViewOnly, onClose, onSaved }) {
 
   return (
     <div className="appt-form-content">
-      {success && <div className="alert alert-success">✅ Waiver saved successfully!</div>}
+      {success && <div className="alert alert-success">✅ Saved successfully!</div>}
       <form onSubmit={handleSubmit}>
         <div className="grid-2">
           <div className="form-group">
@@ -110,8 +119,8 @@ export function WaiverFormContent({ editId, isViewOnly, onClose, onSaved }) {
             <input type="datetime-local" name="date" className="form-control" value={formData.date} onChange={handleChange} required readOnly={isViewOnly} />
           </div>
           <div className="form-group">
-            <label className="form-label">Waiver Center <span>*</span></label>
-            <select name="center" className="form-control" value={formData.center} onChange={handleChange} required disabled={isViewOnly}>
+            <label className="form-label">Clinic/Center <span>*</span></label>
+            <select name="center" className="form-control" value={formData.center} onChange={handleChange} required disabled={isViewOnly || isClinicRole}>
               <option value="">-- Select Center --</option>
               {clinics.map((c, i) => <option key={i} value={c}>{c}</option>)}
             </select>
@@ -119,8 +128,12 @@ export function WaiverFormContent({ editId, isViewOnly, onClose, onSaved }) {
         </div>
         <div className="grid-2">
           <div className="form-group">
-            <label className="form-label">Waiver Client ID</label>
-            <input type="text" className="form-control" value={formData.client_id_code} readOnly style={{background: '#f1f5f9'}} />
+            <label className="form-label">Client ID <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>(auto)</span></label>
+            <input type="text" className="form-control" value={formData.client_id_code} readOnly style={{ background: '#f1f5f9' }} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Discount Client ID</label>
+            <input type="text" name="discount_client_id" className="form-control" value={formData.discount_client_id} onChange={handleChange} placeholder="Enter discount client ID..." readOnly={isViewOnly} />
           </div>
           <div className="form-group">
             <label className="form-label">First Name <span>*</span></label>
@@ -140,7 +153,7 @@ export function WaiverFormContent({ editId, isViewOnly, onClose, onSaved }) {
             <input type="number" name="total_price" className="form-control" value={formData.total_price} onChange={handleChange} required readOnly={isViewOnly} />
           </div>
           <div className="form-group">
-            <label className="form-label">Waiver Amount</label>
+            <label className="form-label">Discount Amount</label>
             <input type="number" name="waiver_amount" className="form-control" value={formData.waiver_amount} onChange={handleChange} required readOnly={isViewOnly} />
           </div>
           <div className="form-group">
@@ -153,7 +166,7 @@ export function WaiverFormContent({ editId, isViewOnly, onClose, onSaved }) {
           <textarea name="remarks" className="form-control" rows="2" value={formData.remarks} onChange={handleChange} readOnly={isViewOnly} />
         </div>
         <div className="form-footer mt-6">
-          {!isViewOnly && <button type="submit" className="btn btn-success btn-lg"><Save size={18} /> Save Waiver</button>}
+          {!isViewOnly && <button type="submit" className="btn btn-success btn-lg"><Save size={18} /> Save</button>}
           <button type="button" className="btn btn-danger btn-lg" onClick={() => (onClose ? onClose() : navigate('/waiver'))}><X size={18} /> {isViewOnly ? 'Close' : 'Cancel'}</button>
         </div>
       </form>
@@ -171,11 +184,11 @@ const NewWaiver = () => {
   return (
     <div className="form-page-container">
       <div className="form-header">
-        <div className="breadcrumb"><ClipboardList size={14} /> <span>/ Waiver / Form</span></div>
+        <div className="breadcrumb"><ClipboardList size={14} /> <span>/ Discount / Form</span></div>
         <button className="btn btn-warning btn-sm" onClick={() => navigate('/waiver')}><ArrowLeft size={16} /> Go To List</button>
       </div>
       <div className="form-card card">
-        <div className="form-card-header"><h2 className="form-title">Waiver Request</h2></div>
+        <div className="form-card-header"><h2 className="form-title">Discount Entry</h2></div>
         <div className="form-body"><WaiverFormContent editId={editId} isViewOnly={isViewOnly} /></div>
       </div>
     </div>

@@ -45,8 +45,8 @@ class UserResponse(BaseModel):
 # Setup CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -54,22 +54,6 @@ app.add_middleware(
 # Initialize database
 models.Base.metadata.create_all(bind=database.engine)
 
-# Run migrations for new columns
-def run_migrations():
-    from sqlalchemy import text
-    with database.engine.connect() as conn:
-        for table, col in [
-            ("appointments", "created_by_user_id INTEGER"),
-            ("call_logs",    "created_by_user_id INTEGER"),
-            ("users",        "agent_name TEXT"),
-        ]:
-            try:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col}"))
-                conn.commit()
-            except Exception:
-                pass  # Column already exists
-
-run_migrations()
 
 # AUTH ENDPOINTS
 @app.post("/auth/login", response_model=LoginResponse)
@@ -294,14 +278,12 @@ def get_appointments(
     appointments = query.all()
     result = []
     for a in appointments:
-        client = db.query(models.Client).filter(models.Client.id == a.client_id).first()
         result.append({
             "id": a.id,
-            "client_id": a.client_id,
-            "client_name": client.name if client else "Unknown",
-            "client_phone": client.phone if client else "N/A",
-            "age": client.age if client else "",
-            "address": client.address if client else "",
+            "client_name": a.client_name,
+            "client_phone": a.client_phone,
+            "age": a.age,
+            "address": a.address,
             "clinic": a.clinic,
             "reason": a.reason,
             "visit_date": a.visit_date,
@@ -333,10 +315,8 @@ def conflict_check(
     _current_user: models.User = Depends(auth.verify_token),
     db: Session = Depends(database.get_db)
 ):
-    query = db.query(models.Appointment).join(
-        models.Client, models.Appointment.client_id == models.Client.id
-    ).filter(
-        models.Client.phone == phone,
+    query = db.query(models.Appointment).filter(
+        models.Appointment.client_phone == phone,
         models.Appointment.visit_status_clinic != 'Visited'
     )
     if exclude_id:
@@ -374,46 +354,14 @@ def create_appointment(
 ):
     _validate_appointment_refs(appointment_data, db)
 
-    # Extract client data
-    client_name = appointment_data.pop("client_name", None)
-    client_phone = appointment_data.pop("client_phone", None)
-    age = appointment_data.pop("age", None)
-    address = appointment_data.pop("address", None)
-
-    # Find or create client
-    client = None
-    if client_phone:
-        client = db.query(models.Client).filter(models.Client.phone == client_phone).first()
-    
-    if not client:
-        client = models.Client(
-            name=client_name, 
-            phone=client_phone, 
-            age=int(age) if age else 0, 
-            address=address
-        )
-        db.add(client)
-        db.commit()
-        db.refresh(client)
-    else:
-        if client_name: client.name = client_name
-        if age is not None: client.age = int(age) if age else 0
-        if address: client.address = address
-        db.commit()
-
-    # Parse visit_date
     if "visit_date" in appointment_data and isinstance(appointment_data["visit_date"], str):
         try:
-            # Handle ISO format from frontend
             dt_str = appointment_data["visit_date"].replace('Z', '')
             appointment_data["visit_date"] = datetime.datetime.fromisoformat(dt_str)
-        except Exception as e:
-            print(f"Date parse error: {e}")
+        except Exception:
             appointment_data["visit_date"] = datetime.datetime.utcnow()
 
-    # Filter only valid fields for the model
     valid_fields = {k: v for k, v in appointment_data.items() if hasattr(models.Appointment, k)}
-    valid_fields["client_id"] = client.id
     valid_fields["created_by_user_id"] = current_user.id
 
     db_appt = models.Appointment(**valid_fields)
@@ -436,25 +384,9 @@ def update_appointment(
     if current_user.role != models.RoleEnum.clinic:
         _validate_appointment_refs(appointment_data, db)
 
-    # Extract client data
-    client_name = appointment_data.pop("client_name", None)
-    client_phone = appointment_data.pop("client_phone", None)
-    age = appointment_data.pop("age", None)
-    address = appointment_data.pop("address", None)
-
-    # Update client if exists
-    if db_appt.client_id:
-        client = db.query(models.Client).filter(models.Client.id == db_appt.client_id).first()
-        if client:
-            if client_name: client.name = client_name
-            if client_phone: client.phone = client_phone
-            if age: client.age = age
-            if address: client.address = address
-            db.commit()
-
-    # Clinic role can only update 3 fields
+    # Clinic role can only update these fields
     if current_user.role == models.RoleEnum.clinic:
-        allowed = {"visit_status_clinic", "followup_status_cc", "spending_amount"}
+        allowed = {"visit_status_clinic", "followup_status_cc", "spending_amount", "followup_preference"}
         appointment_data = {k: v for k, v in appointment_data.items() if k in allowed}
 
     for key, value in appointment_data.items():
@@ -478,107 +410,52 @@ def delete_appointment(
     db.commit()
     return {"message": "Appointment deleted"}
 
-# CLIENTS ENDPOINTS
-@app.get("/clients")
-def get_clients(
+
+# APPOINTMENT VISITS ENDPOINTS
+@app.get("/appointments/{appointment_id}/visits")
+def get_appointment_visits(
+    appointment_id: int,
     current_user: models.User = Depends(auth.verify_token),
     db: Session = Depends(database.get_db)
 ):
-    return db.query(models.Client).all()
+    return db.query(models.AppointmentVisit).filter(models.AppointmentVisit.appointment_id == appointment_id).all()
 
-@app.post("/clients")
-def create_client(
-    client_data: dict,
+@app.post("/appointments/{appointment_id}/visits")
+def add_appointment_visit(
+    appointment_id: int,
+    visit_data: dict,
     current_user: models.User = Depends(auth.verify_token),
     db: Session = Depends(database.get_db)
 ):
-    db_client = models.Client(**client_data)
-    db.add(db_client)
+    if "visit_date" in visit_data and isinstance(visit_data["visit_date"], str):
+        try:
+            dt_str = visit_data["visit_date"].replace('Z', '')
+            visit_data["visit_date"] = datetime.datetime.fromisoformat(dt_str)
+        except:
+            visit_data["visit_date"] = None
+    db_visit = models.AppointmentVisit(appointment_id=appointment_id, **{k: v for k, v in visit_data.items() if k != 'appointment_id'})
+    db.add(db_visit)
     db.commit()
-    db.refresh(db_client)
-    return db_client
+    db.refresh(db_visit)
+    return db_visit
 
-@app.put("/clients/{client_id}")
-def update_client(
-    client_id: int,
-    client_data: dict,
+@app.delete("/appointments/{appointment_id}/visits/{visit_id}")
+def delete_appointment_visit(
+    appointment_id: int,
+    visit_id: int,
     current_user: models.User = Depends(auth.verify_token),
     db: Session = Depends(database.get_db)
 ):
-    db_client = db.query(models.Client).filter(models.Client.id == client_id).first()
-    if not db_client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    for key, value in client_data.items():
-        setattr(db_client, key, value)
+    visit = db.query(models.AppointmentVisit).filter(
+        models.AppointmentVisit.id == visit_id,
+        models.AppointmentVisit.appointment_id == appointment_id
+    ).first()
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    db.delete(visit)
     db.commit()
-    db.refresh(db_client)
-    return db_client
+    return {"message": "Visit deleted"}
 
-@app.delete("/clients/{client_id}")
-def delete_client(
-    client_id: int,
-    current_user: models.User = Depends(auth.can_delete),
-    db: Session = Depends(database.get_db)
-):
-    db_client = db.query(models.Client).filter(models.Client.id == client_id).first()
-    if not db_client:
-        raise HTTPException(status_code=404, detail="Client not found")
-    db.delete(db_client)
-    db.commit()
-    return {"message": "Client deleted"}
-
-# CALL LOGS ENDPOINTS
-@app.get("/call-logs")
-def get_call_logs(
-    current_user: models.User = Depends(auth.verify_token),
-    db: Session = Depends(database.get_db)
-):
-    query = db.query(models.CallLog)
-    if current_user.role == models.RoleEnum.staff:
-        query = query.filter(models.CallLog.created_by_user_id == current_user.id)
-    return query.all()
-
-@app.post("/call-logs")
-def create_call_log(
-    log_data: dict,
-    current_user: models.User = Depends(auth.verify_token),
-    db: Session = Depends(database.get_db)
-):
-    log_data["created_by_user_id"] = current_user.id
-    db_log = models.CallLog(**log_data)
-    db.add(db_log)
-    db.commit()
-    db.refresh(db_log)
-    return db_log
-
-@app.put("/call-logs/{log_id}")
-def update_call_log(
-    log_id: int,
-    log_data: dict,
-    current_user: models.User = Depends(auth.verify_token),
-    db: Session = Depends(database.get_db)
-):
-    db_log = db.query(models.CallLog).filter(models.CallLog.id == log_id).first()
-    if not db_log:
-        raise HTTPException(status_code=404, detail="Call log not found")
-    for key, value in log_data.items():
-        setattr(db_log, key, value)
-    db.commit()
-    db.refresh(db_log)
-    return db_log
-
-@app.delete("/call-logs/{log_id}")
-def delete_call_log(
-    log_id: int,
-    current_user: models.User = Depends(auth.can_delete),
-    db: Session = Depends(database.get_db)
-):
-    db_log = db.query(models.CallLog).filter(models.CallLog.id == log_id).first()
-    if not db_log:
-        raise HTTPException(status_code=404, detail="Call log not found")
-    db.delete(db_log)
-    db.commit()
-    return {"message": "Call log deleted"}
 
 # WAIVERS ENDPOINTS
 @app.get("/waivers")

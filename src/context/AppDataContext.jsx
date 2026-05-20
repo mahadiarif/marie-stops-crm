@@ -9,8 +9,6 @@ export const AppDataProvider = ({ children }) => {
   const [clinics, setClinics] = useState([]);
   const [ngos, setNgos] = useState([]);
   const [reasons, setReasons] = useState([]);
-  const [addedByList, setAddedByList] = useState([]);
-  const [enumerators, setEnumerators] = useState([]);
   const [visitStatus, setVisitStatus] = useState([]);
   const [followupStatus, setFollowupStatus] = useState([]);
   
@@ -18,8 +16,6 @@ export const AppDataProvider = ({ children }) => {
   const [agentNames, setAgentNames] = useState([]);
   const [waiverServices, setWaiverServices] = useState([]);
   const [waivers, setWaivers] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [callLogs, setCallLogs] = useState([]);
   const [appointments, setAppointments] = useState([]);
 
   const waiverCenterPrefixes = {
@@ -43,8 +39,6 @@ export const AppDataProvider = ({ children }) => {
         setClinics(settingsData.filter(s => s.category === 'clinic').map(s => s.value));
         setNgos(settingsData.filter(s => s.category === 'ngo').map(s => s.value));
         setReasons(settingsData.filter(s => s.category === 'reason').map(s => s.value));
-        setAddedByList(settingsData.filter(s => s.category === 'addedBy').map(s => s.value));
-        setEnumerators(settingsData.filter(s => s.category === 'enumerator').map(s => s.value));
         setVisitStatus(settingsData.filter(s => s.category === 'visitStatus').map(s => s.value));
         setFollowupStatus(settingsData.filter(s => s.category === 'followupStatus').map(s => s.value));
         setAgentNames(settingsData.filter(s => s.category === 'agentName').map(s => s.value));
@@ -64,26 +58,6 @@ export const AppDataProvider = ({ children }) => {
           paidAmount: w.paid_amount,
           waiverCode: w.waiver_code,
           remarks: w.remarks
-        })));
-
-        // Fetch Clients
-        const clientsRes = await axiosClient.get(`/clients`);
-        setClients(clientsRes.data);
-
-        // Fetch Call Logs
-        const logsRes = await axiosClient.get(`/call-logs`);
-        setCallLogs(logsRes.data.map(l => ({
-          id: l.id,
-          callerName: l.caller_name,
-          phone: l.phone,
-          callDate: l.call_date,
-          callerType: l.caller_type,
-          reason: l.reason,
-          district: l.district,
-          division: l.division,
-          duration: l.duration,
-          status: l.status,
-          notes: l.notes
         })));
 
         // Fetch Appointments
@@ -186,8 +160,6 @@ export const AppDataProvider = ({ children }) => {
       clinics, addClinic: addGenericItem('clinic', setClinics, clinics), removeClinic: removeGenericItem('clinic', setClinics, clinics),
       ngos, addNgo: addGenericItem('ngo', setNgos, ngos), removeNgo: removeGenericItem('ngo', setNgos, ngos),
       reasons, addReason: addGenericItem('reason', setReasons, reasons), removeReason: removeGenericItem('reason', setReasons, reasons),
-      addedByList, addAddedBy: addGenericItem('addedBy', setAddedByList, addedByList), removeAddedBy: removeGenericItem('addedBy', setAddedByList, addedByList),
-      enumerators, addEnumerator: addGenericItem('enumerator', setEnumerators, enumerators), removeEnumerator: removeGenericItem('enumerator', setEnumerators, enumerators),
       visitStatus, addVisitStatus: addGenericItem('visitStatus', setVisitStatus, visitStatus), removeVisitStatus: removeGenericItem('visitStatus', setVisitStatus, visitStatus),
       followupStatus, addFollowupStatus: addGenericItem('followupStatus', setFollowupStatus, followupStatus), removeFollowupStatus: removeGenericItem('followupStatus', setFollowupStatus, followupStatus),
       
@@ -195,8 +167,6 @@ export const AppDataProvider = ({ children }) => {
       waiverServices, addWaiverService: addGenericItem('waiverService', setWaiverServices, waiverServices), removeWaiverService: removeGenericItem('waiverService', setWaiverServices, waiverServices),
       
       waivers, addWaiver, updateWaiver,
-      clients,
-      callLogs,
       appointments,
       waiverCenterPrefixes,
       refetchAll: fetchData,

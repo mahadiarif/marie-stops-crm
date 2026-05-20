@@ -3,10 +3,10 @@ import axiosClient from '../api/axiosClient';
 import { useAuth } from './AuthContext';
 
 const DEFAULT = {
-  admin:   { appointments: true, call_logs: true, clients: true, clinic_data: true, waivers: true, reports: true, user_management: true, agent_management: true, settings: true },
-  manager: { appointments: true, call_logs: true, clients: true, clinic_data: true, waivers: true, reports: true, user_management: false, agent_management: true, settings: false },
-  staff:   { appointments: true, call_logs: true, clients: true, clinic_data: false, waivers: false, reports: false, user_management: false, agent_management: false, settings: false },
-  clinic:  { appointments: true, call_logs: false, clients: false, clinic_data: true, waivers: true, reports: false, user_management: false, agent_management: false, settings: false },
+  admin:   { appointments: true, clinic_data: true, waivers: true, reports: true, user_management: true, agent_management: true, settings: true },
+  manager: { appointments: true, clinic_data: true, waivers: true, reports: true, user_management: false, agent_management: true, settings: false },
+  staff:   { appointments: true, clinic_data: false, waivers: false, reports: false, user_management: false, agent_management: false, settings: false },
+  clinic:  { appointments: true, clinic_data: true, waivers: true, reports: false, user_management: false, agent_management: false, settings: false },
 };
 
 const PermissionsContext = createContext(null);

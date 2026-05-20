@@ -3,8 +3,6 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   UserPlus,
-  PhoneCall,
-  Users,
   Settings,
   LogOut,
   Bell,
@@ -116,22 +114,12 @@ const Layout = () => {
                 <UserPlus size={20} /><span>Appointments</span>
               </NavLink>
             )}
-            {can('call_logs') && (
-              <NavLink to="/call-logs" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                <PhoneCall size={20} /><span>Call Logs</span>
-              </NavLink>
-            )}
-            {can('clients') && (
-              <NavLink to="/clients" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                <Users size={20} /><span>Clients</span>
-              </NavLink>
-            )}
           </NavGroup>
 
-          <NavGroup label="WAIVER" defaultOpen={true}>
+          <NavGroup label="DISCOUNT" defaultOpen={true}>
             {can('waivers') && (
               <NavLink to="/waiver" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                <ClipboardList size={20} /><span>Waiver List</span>
+                <ClipboardList size={20} /><span>Discount Tracking</span>
               </NavLink>
             )}
             {can('clinic_data') && (
@@ -152,14 +140,14 @@ const Layout = () => {
           {hasRole('admin') && (
             <NavGroup label="SYSTEM" defaultOpen={true}>
               <NavLink to="/users" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                <Shield size={20} /><span>User Management</span>
+                <Shield size={20} /><span>Users</span>
               </NavLink>
               <NavLink to="/roles" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                <UserCheck size={20} /><span>Role Management</span>
+                <UserCheck size={20} /><span>Roles & Permissions</span>
               </NavLink>
               {can('agent_management') && (
                 <NavLink to="/agents" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                  <UserCheck size={20} /><span>Agent Management</span>
+                  <UserCheck size={20} /><span>Agents</span>
                 </NavLink>
               )}
               {can('settings') && (
@@ -173,7 +161,7 @@ const Layout = () => {
           {!hasRole('admin') && can('agent_management') && (
             <NavGroup label="SYSTEM" defaultOpen={true}>
               <NavLink to="/agents" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                <UserCheck size={20} /><span>Agent Management</span>
+                <UserCheck size={20} /><span>Agents</span>
               </NavLink>
             </NavGroup>
           )}

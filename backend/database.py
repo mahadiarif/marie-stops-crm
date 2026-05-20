@@ -1,10 +1,11 @@
 import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# Default to SQLite, but use MYSQL_URL if provided
-# Example: mysql+pymysql://user:password@localhost/dbname
+load_dotenv()
+
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./crm.db")
 
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
@@ -13,6 +14,7 @@ if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
     )
 else:
     engine = create_engine(SQLALCHEMY_DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

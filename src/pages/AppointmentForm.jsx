@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import { useAppData } from '../context/AppDataContext';
 import { useAuth } from '../context/AuthContext';
-import { Calendar, Trash2, Save, X, Send, Plus, Info, ArrowLeft } from 'lucide-react';
+import { Calendar, Trash2, Save, X, Plus, Info, ArrowLeft, PhoneOff } from 'lucide-react';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import './AppointmentForm.css';
@@ -14,10 +14,11 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
   const { user } = useAuth();
   const isClinicRole = user?.role === 'clinic';
   const isStaffRole = user?.role === 'staff';
+  // TODO: enable per role when needed
+  const showReferralSection = false;
 
   const {
     clinics, ngos, reasons,
-    addedByList, enumerators,
     visitStatus, followupStatus,
     agentNames
   } = useAppData();
@@ -35,8 +36,11 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
   const [referralFee, setReferralFee] = useState('No');
   const [reconfirmation, setReconfirmation] = useState('Okay');
   const [visitDate, setVisitDate] = useState(new Date());
+  const [visitTime, setVisitTime] = useState(() => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  });
   const [refId, setRefId] = useState('');
-  const [smsCode, setSmsCode] = useState('');
   const [altPhone, setAltPhone] = useState('');
   const [unsafeToCall, setUnsafeToCall] = useState(false);
   const [visitStatusClinic, setVisitStatusClinic] = useState('');
@@ -48,11 +52,10 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
   const [sourceName, setSourceName] = useState('');
   const [sourcePhone, setSourcePhone] = useState('');
   const [selectedNgo, setSelectedNgo] = useState('');
-  const [selectedAddedBy, setSelectedAddedBy] = useState('');
-  const [selectedEnumerator, setSelectedEnumerator] = useState('');
   const [sourceRemarks, setSourceRemarks] = useState('');
 
   const [existingVisits, setExistingVisits] = useState([]);
+  const [savingVisit, setSavingVisit] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -67,7 +70,9 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
             setAddress(appt.address || '');
             setSelectedClinic(appt.clinic || '');
             setSelectedReason(appt.reason || '');
-            setVisitDate(appt.visit_date ? new Date(appt.visit_date) : new Date());
+            const apptDate = appt.visit_date ? new Date(appt.visit_date) : new Date();
+            setVisitDate(apptDate);
+            setVisitTime(`${String(apptDate.getHours()).padStart(2,'0')}:${String(apptDate.getMinutes()).padStart(2,'0')}`);
             setSelectedAgent(appt.agent_name || '');
             setRemarks(appt.remarks || '');
             setReferralFee(appt.referral_fee || 'No');
@@ -77,8 +82,6 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
             setSourceName(appt.source_name || '');
             setSourcePhone(appt.source_phone || '');
             setSelectedNgo(appt.ngo || '');
-            setSelectedAddedBy(appt.added_by || '');
-            setSelectedEnumerator(appt.enumerator || '');
             setSourceRemarks(appt.source_remarks || '');
             setAltPhone(appt.alt_phone || '');
             setUnsafeToCall(appt.unsafe_to_call || false);
@@ -98,6 +101,18 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
           }
         }
 
+        if (editId) {
+          const visitsRes = await axiosClient.get(`/appointments/${editId}/visits`);
+          setExistingVisits(visitsRes.data.map(v => ({
+            id: v.id, dbId: v.id, isNew: false,
+            clinic: v.clinic || '',
+            date: v.visit_date ? new Date(v.visit_date).toISOString().slice(0, 16) : '',
+            remarks: v.remarks || '',
+            referralFee: v.referral_fee || 'No',
+            reconfirmation: v.reconfirmation || 'Pending',
+          })));
+        }
+
         if (!editId) {
           const year = new Date().getFullYear();
           const randomCounter = Math.floor(10000 + Math.random() * 90000);
@@ -107,8 +122,6 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
           }
         }
 
-        const generateSmsCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
-        setSmsCode(generateSmsCode());
       } catch (err) {
         console.error("Error fetching form data:", err);
       }
@@ -122,7 +135,8 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
         await axiosClient.put(`/appointments/${editId}`, {
           visit_status_clinic: visitStatusClinic,
           followup_status_cc: followupStatusCc,
-          spending_amount: parseInt(spendingAmount) || 0
+          spending_amount: parseInt(spendingAmount) || 0,
+          followup_preference: followupPreference
         });
         setSuccessMessage(true);
         setTimeout(() => {
@@ -148,6 +162,9 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
         alert("Please select a valid visit date.");
         return;
       }
+      const [hours, minutes] = visitTime.split(':').map(Number);
+      const combinedDate = new Date(visitDate);
+      combinedDate.setHours(hours, minutes, 0, 0);
 
       // Conflict check for staff on new appointments (system-wide)
       if (isStaffRole && !editId) {
@@ -167,7 +184,7 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
         address,
         clinic: selectedClinic,
         reason: selectedReason,
-        visit_date: visitDate.toISOString(),
+        visit_date: combinedDate.toISOString(),
         agent_name: selectedAgent,
         remarks,
         referral_fee: referralFee,
@@ -177,8 +194,6 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
         source_name: sourceName,
         source_phone: sourcePhone,
         ngo: selectedNgo,
-        added_by: selectedAddedBy,
-        enumerator: selectedEnumerator,
         source_remarks: sourceRemarks,
         alt_phone: altPhone,
         unsafe_to_call: unsafeToCall,
@@ -190,10 +205,19 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
 
       console.log("Submitting data:", data);
 
+      let apptId = editId;
       if (editId) {
         await axiosClient.put(`/appointments/${editId}`, data);
       } else {
-        await axiosClient.post(`/appointments`, data);
+        const res = await axiosClient.post(`/appointments`, data);
+        apptId = res.data.id;
+      }
+
+      const newVisits = existingVisits.filter(v => v.isNew);
+      for (const v of newVisits) {
+        await axiosClient.post(`/appointments/${apptId}/visits`, {
+          clinic: v.clinic, visit_date: v.date, remarks: v.remarks
+        });
       }
 
       setSuccessMessage(true);
@@ -216,18 +240,26 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
   };
 
   const addExistingVisit = () => {
-    setExistingVisits([...existingVisits, {
-      id: Date.now(),
-      clinic: clinics[0] || "Clinic",
+    setExistingVisits(prev => [...prev, {
+      id: Date.now(), dbId: null, isNew: true,
+      clinic: clinics[0] || '',
       date: new Date().toISOString().slice(0, 16),
-      remarks: "New visit",
-      referralFee: "No",
-      reconfirmation: "Pending"
+      remarks: ''
     }]);
   };
 
-  const removeExistingVisit = (id) => {
-    setExistingVisits(existingVisits.filter(v => v.id !== id));
+  const updateVisitField = (id, field, value) => {
+    setExistingVisits(prev => prev.map(v => v.id === id ? { ...v, [field]: value } : v));
+  };
+
+  const removeExistingVisit = async (id) => {
+    const visit = existingVisits.find(v => v.id === id);
+    if (visit?.dbId) {
+      try {
+        await axiosClient.delete(`/appointments/${editId}/visits/${visit.dbId}`);
+      } catch { alert('Failed to delete visit.'); return; }
+    }
+    setExistingVisits(prev => prev.filter(v => v.id !== id));
   };
 
   return (
@@ -293,8 +325,15 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
           <div className="form-group">
             <label className="form-label">Visit Date <span>*</span></label>
             <DatePicker selected={visitDate} onChange={(d) => setVisitDate(d)}
-              showTimeSelect dateFormat="Pp" className="form-control"
+              dateFormat="yyyy-MM-dd" className="form-control"
               readOnly={isViewOnly || isClinicRole} disabled={isViewOnly || isClinicRole} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Visit Time <span>*</span></label>
+            <input type="time" className="form-control" value={visitTime}
+              onChange={e => setVisitTime(e.target.value)}
+              readOnly={isViewOnly || isClinicRole}
+              disabled={isViewOnly || isClinicRole} />
           </div>
           <div className="form-group">
             <label className="form-label">Agent Name <span>*</span></label>
@@ -309,24 +348,6 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
               </select>
             )}
           </div>
-          <div className="form-group">
-            <label className="form-label">Referral Fee Received</label>
-            <select className="form-control" value={referralFee}
-              onChange={(e) => setReferralFee(e.target.value)} disabled={isViewOnly || isClinicRole}>
-              <option value="No">No</option>
-              <option value="Yes">Yes</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Reconfirmation</label>
-            <select className="form-control" value={reconfirmation}
-              onChange={(e) => setReconfirmation(e.target.value)} disabled={isViewOnly || isClinicRole}>
-              <option value="Okay">Okay</option>
-              <option value="Not Okay">Not Okay</option>
-              <option value="No Response">No Response</option>
-              <option value="Pending">Pending</option>
-            </select>
-          </div>
         </div>
         <div className="form-group" style={{ marginTop: '1rem' }}>
           <label className="form-label">Remarks</label>
@@ -336,7 +357,11 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
         <div className="form-group" style={{ marginTop: '0.75rem' }}>
           <div className="checkbox-item">
             <input type="checkbox" id="unsafeContact" checked={unsafeToCall}
-              onChange={(e) => setUnsafeToCall(e.target.checked)} disabled={isViewOnly || isClinicRole} />
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setUnsafeToCall(checked);
+                setFollowupPreference(checked ? 'SMS Only' : 'Call Only');
+              }} disabled={isViewOnly || isClinicRole} />
             <label htmlFor="unsafeContact"><strong>Is it unsafe to call?</strong> (Use SMS/WhatsApp instead)</label>
           </div>
         </div>
@@ -360,8 +385,6 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
                 <th>Clinic</th>
                 <th>Visit Date</th>
                 <th>Remarks</th>
-                <th>Referral Fee</th>
-                <th>Reconfirmation</th>
                 {!isViewOnly && <th>Action</th>}
               </tr>
             </thead>
@@ -370,27 +393,20 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
                 <tr key={visit.id}>
                   <td>{index + 1}</td>
                   <td>
-                    <select className="form-control" defaultValue={visit.clinic} disabled={isViewOnly}>
+                    <select className="form-control" value={visit.clinic}
+                      onChange={e => updateVisitField(visit.id, 'clinic', e.target.value)} disabled={isViewOnly}>
                       {clinics.map((c, i) => <option key={i}>{c}</option>)}
                     </select>
                   </td>
-                  <td><input type="datetime-local" className="form-control" defaultValue={visit.date} readOnly={isViewOnly} /></td>
-                  <td><input type="text" className="form-control" defaultValue={visit.remarks} readOnly={isViewOnly} /></td>
-                  <td>
-                    <select className="form-control" defaultValue={visit.referralFee} disabled={isViewOnly}>
-                      <option>Yes</option><option>No</option>
-                    </select>
-                  </td>
-                  <td>
-                    <select className="form-control" defaultValue={visit.reconfirmation} disabled={isViewOnly}>
-                      <option>Okay</option><option>Not Okay</option><option>Pending</option>
-                    </select>
-                  </td>
+                  <td><input type="datetime-local" className="form-control" value={visit.date}
+                    onChange={e => updateVisitField(visit.id, 'date', e.target.value)} readOnly={isViewOnly} /></td>
+                  <td><input type="text" className="form-control" value={visit.remarks}
+                    onChange={e => updateVisitField(visit.id, 'remarks', e.target.value)} readOnly={isViewOnly} /></td>
                   {!isViewOnly && <td><button className="btn-icon text-danger" onClick={() => removeExistingVisit(visit.id)}><Trash2 size={16} /></button></td>}
                 </tr>
               ))}
               {existingVisits.length === 0 && (
-                <tr><td colSpan={isViewOnly ? 6 : 7} style={{ textAlign: 'center', padding: '1rem', color: '#94a3b8' }}>No existing visits found.</td></tr>
+                <tr><td colSpan={isViewOnly ? 4 : 5} style={{ textAlign: 'center', padding: '1rem', color: '#94a3b8' }}>No existing visits found.</td></tr>
               )}
             </tbody>
           </table>
@@ -400,6 +416,16 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
       {/* ── Section 4: Follow Up ── */}
       <div className="form-section">
         <h3 className="section-title">Follow up Call/SMS</h3>
+        {unsafeToCall && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '0.6rem',
+            background: '#fef2f2', border: '1.5px solid #fca5a5', borderRadius: '8px',
+            padding: '0.65rem 1rem', marginBottom: '1rem', color: '#dc2626', fontWeight: 600, fontSize: '0.875rem'
+          }}>
+            <PhoneOff size={18} style={{ flexShrink: 0 }} />
+            <span>Client requested: <strong>do not call</strong> — contact via <strong>SMS / WhatsApp only</strong> ({followupPreference})</span>
+          </div>
+        )}
         <div className="grid-3">
           <div className="form-group">
             <label className="form-label">Client Spending Amount (৳)</label>
@@ -409,14 +435,14 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
               placeholder="e.g. 2500"
               value={spendingAmount}
               onChange={(e) => setSpendingAmount(e.target.value)}
-              readOnly={isViewOnly || isStaffRole}
+              readOnly={isViewOnly || !isClinicRole}
               min="0"
             />
           </div>
           <div className="form-group">
             <label className="form-label">Visit Status by Clinic</label>
             <select className="form-control" value={visitStatusClinic}
-              onChange={(e) => setVisitStatusClinic(e.target.value)} disabled={isViewOnly || isStaffRole}>
+              onChange={(e) => setVisitStatusClinic(e.target.value)} disabled={isViewOnly || !isClinicRole}>
               <option value="">-- Select Status --</option>
               {visitStatus.map((s, i) => <option key={i} value={s}>{s}</option>)}
             </select>
@@ -424,7 +450,7 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
           <div className="form-group">
             <label className="form-label">Follow up Status by CC</label>
             <select className="form-control" value={followupStatusCc}
-              onChange={(e) => setFollowupStatusCc(e.target.value)} disabled={isViewOnly}>
+              onChange={(e) => setFollowupStatusCc(e.target.value)} disabled={isViewOnly || (user?.role !== 'clinic' && user?.role !== 'staff')}>
               <option value="">-- Select Followup --</option>
               {followupStatus.map((s, i) => <option key={i} value={s}>{s}</option>)}
             </select>
@@ -432,7 +458,7 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
           <div className="form-group">
             <label className="form-label">Follow up Preference</label>
             <select className="form-control" value={followupPreference}
-              onChange={(e) => setFollowupPreference(e.target.value)} disabled={isViewOnly || isClinicRole}>
+              onChange={(e) => setFollowupPreference(e.target.value)} disabled={isViewOnly || !isClinicRole}>
               <option value="Call Only">Call Only</option>
               <option value="SMS Only">SMS Only</option>
               <option value="Call & SMS">Call & SMS</option>
@@ -440,27 +466,10 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
             </select>
           </div>
         </div>
-        <div className="grid-2" style={{ marginTop: '1rem' }}>
-          <div className="form-group">
-            <label className="form-label">Mobile Number</label>
-            <input type="text" className="form-control" value={phone} readOnly />
-          </div>
-          <div className="form-group">
-            <label className="form-label">SMS Code</label>
-            <div className="input-group">
-              <input type="text" className="form-control" value={smsCode} readOnly />
-              {!isViewOnly && (
-                <button className="btn btn-primary" onClick={() => console.log('Sending SMS')}>
-                  <Send size={14} /> Send SMS
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* ── Section 5: Referral ── */}
-      <div className="form-section referral-section">
+      {showReferralSection && <div className="form-section referral-section">
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
           <h3 className="section-title" style={{ margin: 0 }}>Generated From (Referral)</h3>
           <div className="checkbox-item">
@@ -491,22 +500,6 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">Added By</label>
-                <select className="form-control" value={selectedAddedBy}
-                  onChange={(e) => setSelectedAddedBy(e.target.value)} disabled={isViewOnly || isClinicRole}>
-                  <option value="">-- Select Agent --</option>
-                  {addedByList.map((a, i) => <option key={i} value={a}>{a}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Enumerator</label>
-                <select className="form-control" value={selectedEnumerator}
-                  onChange={(e) => setSelectedEnumerator(e.target.value)} disabled={isViewOnly || isClinicRole}>
-                  <option value="">-- Select Enumerator --</option>
-                  {enumerators.map((e, i) => <option key={i} value={e}>{e}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
                 <label className="form-label">Reference ID</label>
                 <input type="text" className="form-control" value={refId} readOnly />
               </div>
@@ -518,7 +511,7 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
       <div className="note-box">
         <Info size={18} />

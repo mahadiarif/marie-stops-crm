@@ -13,7 +13,8 @@ import {
   Eye,
   Clock,
   MapPin,
-  Columns
+  Columns,
+  PhoneOff
 } from 'lucide-react';
 
 const ALL_COLUMNS = [
@@ -23,7 +24,6 @@ const ALL_COLUMNS = [
   { key: 'reason',     label: 'Reason' },
   { key: 'agent',      label: 'Agent' },
   { key: 'date',       label: 'Date & Time' },
-  { key: 'reconf',     label: 'Reconfirmation' },
   { key: 'visitStatus',label: 'Visit Status' },
   { key: 'spending',   label: 'Spending (৳)' },
   { key: 'followup',   label: 'Follow-up Status' },
@@ -39,7 +39,6 @@ const AppointmentList = () => {
   const { clinics, followupStatus } = useAppData();
   const [searchTerm, setSearchTerm] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
   const [clinicFilter, setClinicFilter] = useState('');
   const [visitedFilter, setVisitedFilter] = useState('');
   const [followupFilter, setFollowupFilter] = useState('');
@@ -75,12 +74,14 @@ const AppointmentList = () => {
         phone: a.client_phone,
         clinic: a.clinic,
         date: a.visit_date,
-        status: a.reconfirmation || "Pending",
+        status: '',
         type: a.reason || "Consultation",
         agent: a.agent_name || "—",
         visitStatus: a.visit_status_clinic || "—",
         followup: a.followup_status_cc || "—",
-        spendingAmount: a.spending_amount || 0
+        spendingAmount: a.spending_amount || 0,
+        unsafeToCall: a.unsafe_to_call || false,
+        followupPreference: a.followup_preference || "Call Only"
       })));
     } catch (err) {
       console.error("Error fetching appointments:", err);
@@ -116,7 +117,6 @@ const AppointmentList = () => {
         app.name.toLowerCase().includes(appliedSearch.toLowerCase()) ||
         app.phone.includes(appliedSearch);
 
-      const matchesStatus = statusFilter === '' || app.status === statusFilter;
       const matchesClinic = isClinicRole
         ? app.clinic === user?.assignedClinic
         : (clinicFilter === '' || app.clinic === clinicFilter);
@@ -131,9 +131,9 @@ const AppointmentList = () => {
       const matchesDateFrom = !dateFrom || appDate >= new Date(dateFrom);
       const matchesDateTo = !dateTo || appDate <= new Date(dateTo + 'T23:59:59');
 
-      return matchesSearch && matchesStatus && matchesClinic && matchesVisited && matchesFollowup && matchesDateFrom && matchesDateTo;
+      return matchesSearch && matchesClinic && matchesVisited && matchesFollowup && matchesDateFrom && matchesDateTo;
     });
-  }, [appointments, appliedSearch, statusFilter, clinicFilter, visitedFilter, followupFilter, dateFrom, dateTo, isClinicRole, user]);
+  }, [appointments, appliedSearch, clinicFilter, visitedFilter, followupFilter, dateFrom, dateTo, isClinicRole, user]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAppointments.length / PAGE_SIZE));
   const paginatedAppointments = filteredAppointments.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -183,19 +183,6 @@ const AppointmentList = () => {
             </select>
           </div>
           
-          <div className="filter-group">
-            <label>Visit Status</label>
-            <select 
-              className="uniform-input" 
-              value={statusFilter} 
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="">All Status</option>
-              <option value="Pending">Pending</option>
-              <option value="Okay">Confirmed</option>
-              <option value="Visited">Visited</option>
-            </select>
-          </div>
 
           <div className="filter-group">
             <label>Visited Clinic?</label>
@@ -323,7 +310,6 @@ const AppointmentList = () => {
                 {col('reason') && <th>Reason</th>}
                 {col('agent') && <th>Agent</th>}
                 {col('date') && <th>Date & Time</th>}
-                {col('reconf') && <th>Reconfirmation</th>}
                 {col('visitStatus') && <th>Visit Status</th>}
                 {col('spending') && <th>Spending (৳)</th>}
                 {col('followup') && <th>Follow-up Status</th>}
@@ -337,8 +323,19 @@ const AppointmentList = () => {
                   {col('client') && (
                     <td>
                       <div className="client-info-cell">
-                        <span className="client-name">{app.name}</span>
-                        <span className="client-phone">{app.phone}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span className="client-name">{app.name}</span>
+                          {app.unsafeToCall && (
+                            <span title="SMS/WhatsApp only — do not call" style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '3px',
+                              background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5',
+                              borderRadius: '4px', padding: '1px 5px', fontSize: '0.7rem', fontWeight: 600
+                            }}>
+                              <PhoneOff size={11} /> No Call
+                            </span>
+                          )}
+                        </div>
+                        <span className="client-phone">{app.phone}{app.unsafeToCall ? ` · ${app.followupPreference}` : ''}</span>
                       </div>
                     </td>
                   )}
@@ -358,18 +355,6 @@ const AppointmentList = () => {
                         <Clock size={14} className="text-muted" />
                         <span>{new Date(app.date).toLocaleString()}</span>
                       </div>
-                    </td>
-                  )}
-                  {col('reconf') && (
-                    <td>
-                      <span className={`badge ${
-                        app.status === 'Okay' ? 'badge-success'
-                        : app.status === 'Pending' ? 'badge-warning'
-                        : app.status === 'No Response' ? 'badge-danger'
-                        : 'badge-info'
-                      }`}>
-                        {app.status}
-                      </span>
                     </td>
                   )}
                   {col('visitStatus') && <td>{app.visitStatus}</td>}

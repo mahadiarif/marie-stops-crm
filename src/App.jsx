@@ -3,9 +3,6 @@ import Layout from './layout/Layout';
 import Dashboard from './pages/Dashboard';
 import AppointmentList from './pages/AppointmentList';
 import AppointmentForm from './pages/AppointmentForm';
-import CallLogForm from './pages/CallLogForm';
-import CallLogList from './pages/CallLogList';
-import ClientList from './pages/ClientList';
 import WaiverList from './pages/waiver/WaiverList';
 import NewWaiver from './pages/waiver/NewWaiver';
 import Settings from './pages/Settings';
@@ -40,9 +37,6 @@ function App() {
               <Route index element={<Dashboard />} />
               <Route path="appointments" element={<AppointmentList />} />
               <Route path="appointments/new" element={<AppointmentForm />} />
-              <Route path="call-logs" element={<ProtectedRoute requiredRole={["admin", "manager", "staff"]}><CallLogList /></ProtectedRoute>} />
-              <Route path="call-logs/new" element={<ProtectedRoute requiredRole={["admin", "manager", "staff"]}><CallLogForm /></ProtectedRoute>} />
-              <Route path="clients" element={<ProtectedRoute requiredRole={["admin", "manager", "staff"]}><ClientList /></ProtectedRoute>} />
               <Route path="waiver" element={<ProtectedRoute requiredRole={["admin", "manager", "clinic"]}><WaiverList /></ProtectedRoute>} />
               <Route path="waiver/new" element={<ProtectedRoute requiredRole={["admin", "manager", "clinic"]}><NewWaiver /></ProtectedRoute>} />
               <Route path="settings" element={<ProtectedRoute requiredRole="admin"><Settings /></ProtectedRoute>} />

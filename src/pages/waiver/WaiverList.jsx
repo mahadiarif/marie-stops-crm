@@ -10,6 +10,7 @@ const PAGE_SIZE = 10;
 const WaiverList = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isClinicRole = user?.role === 'clinic';
   const canDelete = user?.role === 'admin' || user?.role === 'manager';
 
   const [waivers, setWaivers] = useState([]);
@@ -19,12 +20,17 @@ const WaiverList = () => {
 
   useEffect(() => {
     axiosClient.get('/waivers')
-      .then(r => setWaivers(r.data))
+      .then(r => {
+        const all = r.data;
+        setWaivers(isClinicRole && user?.assignedClinic
+          ? all.filter(w => w.center === user.assignedClinic)
+          : all);
+      })
       .catch(err => console.error(err));
   }, []);
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this waiver record?')) return;
+    if (!window.confirm('Delete this discount record?')) return;
     try {
       await axiosClient.delete(`/waivers/${id}`);
       setWaivers(prev => prev.filter(w => w.id !== id));
@@ -56,14 +62,14 @@ const WaiverList = () => {
     <div className="list-page-container">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Waiver List</h1>
+          <h1 className="page-title">Discount Tracking</h1>
           <div className="breadcrumb">
             <ClipboardList size={14} />
-            <span>/ Waiver / Records</span>
+            <span>/ Discount / Records</span>
           </div>
         </div>
         <button className="btn btn-primary" onClick={() => navigate('/waiver/new')}>
-          <Plus size={18} /> New Waiver Request
+          <Plus size={18} /> New Discount Entry
         </button>
       </div>
 
@@ -73,7 +79,7 @@ const WaiverList = () => {
             <ClipboardList size={24} />
           </div>
           <div className="stat-info">
-            <span className="stat-label">Total Waivers</span>
+            <span className="stat-label">Total Discounts</span>
             <span className="stat-value">{stats.total}</span>
           </div>
         </div>
@@ -91,7 +97,7 @@ const WaiverList = () => {
             <TrendingDown size={24} />
           </div>
           <div className="stat-info">
-            <span className="stat-label">Total Waiver (৳)</span>
+            <span className="stat-label">Total Discount (৳)</span>
             <span className="stat-value">{stats.totalWaiver.toLocaleString()}</span>
           </div>
         </div>
@@ -114,7 +120,7 @@ const WaiverList = () => {
               <Search size={18} className="search-icon" />
               <input
                 type="text"
-                placeholder="Name, waiver code, client ID..."
+                placeholder="Name, discount code, client ID..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { setAppliedSearch(searchTerm); setCurrentPage(1); } }}
@@ -139,21 +145,21 @@ const WaiverList = () => {
             <thead>
               <tr>
                 <th>#</th>
-                <th>Waiver Code</th>
+                <th>Discount Code</th>
                 <th>Client Name</th>
                 <th>Client ID</th>
                 <th>Service</th>
                 <th>Center</th>
                 <th>Date</th>
                 <th>Total</th>
-                <th>Waiver</th>
+                <th>Discount</th>
                 <th>Paid</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {paginated.length === 0 && (
-                <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No waivers found.</td></tr>
+                <tr><td colSpan="11" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No discounts found.</td></tr>
               )}
               {paginated.map((waiver, i) => (
                 <tr key={waiver.id}>

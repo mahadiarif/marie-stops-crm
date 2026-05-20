@@ -223,7 +223,7 @@ const Profile = () => {
                 <div className="activity-item">
                   <div className="activity-dot"></div>
                   <div className="activity-content">
-                    <p>Created new waiver record</p>
+                    <p>Created new discount record</p>
                     <span>Yesterday</span>
                   </div>
                 </div>

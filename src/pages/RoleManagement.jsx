@@ -47,10 +47,8 @@ const ROLE_META = {
 
 const FEATURE_LABELS = {
   appointments:     'Appointments',
-  call_logs:        'Call Logs',
-  clients:          'Clients',
   clinic_data:      'Clinic List',
-  waivers:          'Waivers',
+  waivers:          'Discounts',
   reports:          'Reports',
   agent_management: 'Agent Management',
   user_management:  'User Management',
@@ -58,7 +56,7 @@ const FEATURE_LABELS = {
 };
 
 const COLUMN_DEFS = {
-  appointments: [  // key matches FEATURE_LABELS key
+  appointments: [
     { key: 'id',          label: 'Appointment ID' },
     { key: 'client',      label: 'Client Details' },
     { key: 'clinic',      label: 'Clinic' },
@@ -69,21 +67,6 @@ const COLUMN_DEFS = {
     { key: 'visitStatus', label: 'Visit Status' },
     { key: 'spending',    label: 'Spending (৳)' },
     { key: 'followup',    label: 'Follow-up Status' },
-  ],
-  call_logs: [
-    { key: 'callerName',  label: 'Caller Details' },
-    { key: 'callerType',  label: 'Caller Type' },
-    { key: 'reason',      label: 'Reason' },
-    { key: 'district',    label: 'District' },
-    { key: 'duration',    label: 'Duration' },
-    { key: 'status',      label: 'Status' },
-    { key: 'date',        label: 'Date' },
-  ],
-  clients: [
-    { key: 'name',        label: 'Client Name' },
-    { key: 'contact',     label: 'Contact Details' },
-    { key: 'age',         label: 'Age' },
-    { key: 'registered',  label: 'Registered On' },
   ],
 };
 

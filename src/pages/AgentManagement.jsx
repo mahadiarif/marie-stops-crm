@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useAppData } from '../context/AppDataContext';
 import axiosClient from '../api/axiosClient';
-import { UserCheck, Plus, Trash2, Save, X, ArrowLeft, Search, Calendar } from 'lucide-react';
+import { UserCheck, Plus, Trash2, Save, X, ArrowLeft, Search, Calendar, TrendingUp, Award, Activity, Users } from 'lucide-react';
 
 const PAGE_SIZE = 10;
 
 const AgentManagement = () => {
-  const { agentNames, addAgentName, removeAgentName, appointments } = useAppData();
+  const { agentNames, addAgentName, removeAgentName, appointments, waivers } = useAppData();
   const [searchTerm, setSearchTerm] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -19,10 +19,24 @@ const AgentManagement = () => {
 
   const agentStats = useMemo(() => {
     return agentNames.map(name => {
-      const total = appointments.filter(a => a.agent === name).length;
-      return { name, total };
+      const agentAppts = appointments.filter(a => a.agent === name);
+      const total = agentAppts.length;
+      const visited = agentAppts.filter(a => a.visitStatus && a.visitStatus !== '—').length;
+      const spending = agentAppts.reduce((s, a) => s + (a.spendingAmount || 0), 0);
+      return { name, total, visited, spending };
     });
   }, [agentNames, appointments]);
+
+  const summaryStats = useMemo(() => {
+    const totalAppts = agentStats.reduce((s, a) => s + a.total, 0);
+    const activeAgents = agentStats.filter(a => a.total > 0).length;
+    const totalVisited = agentStats.reduce((s, a) => s + a.visited, 0);
+    const totalSpending = agentStats.reduce((s, a) => s + a.spending, 0);
+    const totalDiscount = waivers.reduce((s, w) => s + (w.waiverAmount || 0), 0);
+    const avgPerAgent = agentNames.length ? (totalAppts / agentNames.length).toFixed(1) : 0;
+    const top = agentStats.reduce((best, a) => a.total > (best?.total || 0) ? a : best, null);
+    return { totalAppts, activeAgents, totalVisited, totalSpending, totalDiscount, avgPerAgent, topAgent: top?.name || '—' };
+  }, [agentStats, agentNames, waivers]);
 
   const filtered = useMemo(() => {
     const term = appliedSearch.toLowerCase();
@@ -154,7 +168,7 @@ const AgentManagement = () => {
       </div>
 
       {/* Summary cards */}
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
         <div className="stat-card">
           <div className="stat-icon" style={{ backgroundColor: '#eff6ff', color: '#005CB9' }}>
             <UserCheck size={24} />
@@ -166,11 +180,65 @@ const AgentManagement = () => {
         </div>
         <div className="stat-card">
           <div className="stat-icon" style={{ backgroundColor: '#f0fdf4', color: '#10b981' }}>
+            <Users size={24} />
+          </div>
+          <div className="stat-info">
+            <span className="stat-label">Active Agents</span>
+            <span className="stat-value">{summaryStats.activeAgents}</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon" style={{ backgroundColor: '#fdf4ff', color: '#9333ea' }}>
             <Calendar size={24} />
           </div>
           <div className="stat-info">
             <span className="stat-label">Total Appointments</span>
-            <span className="stat-value">{agentStats.reduce((s, a) => s + a.total, 0)}</span>
+            <span className="stat-value">{summaryStats.totalAppts}</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon" style={{ backgroundColor: '#fff7ed', color: '#f59e0b' }}>
+            <Activity size={24} />
+          </div>
+          <div className="stat-info">
+            <span className="stat-label">Total Visited</span>
+            <span className="stat-value">{summaryStats.totalVisited}</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon" style={{ backgroundColor: '#fef2f2', color: '#e4007e' }}>
+            <TrendingUp size={24} />
+          </div>
+          <div className="stat-info">
+            <span className="stat-label">Avg / Agent</span>
+            <span className="stat-value">{summaryStats.avgPerAgent}</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon" style={{ backgroundColor: '#fefce8', color: '#ca8a04' }}>
+            <Award size={24} />
+          </div>
+          <div className="stat-info">
+            <span className="stat-label">Top Performer</span>
+            <span className="stat-value" style={{ fontSize: '0.95rem' }}>{summaryStats.topAgent}</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon" style={{ backgroundColor: '#f0fdf4', color: '#10b981' }}>
+            <TrendingUp size={24} />
+          </div>
+          <div className="stat-info">
+            <span className="stat-label">Total Spending (৳)</span>
+            <span className="stat-value">৳{summaryStats.totalSpending.toLocaleString()}</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon" style={{ backgroundColor: '#fef2f2', color: '#dc2626' }}>
+            <Activity size={24} />
+          </div>
+          <div className="stat-info">
+            <span className="stat-label">Total Discount (৳)</span>
+            <span className="stat-value">৳{summaryStats.totalDiscount.toLocaleString()}</span>
           </div>
         </div>
       </div>
@@ -209,14 +277,17 @@ const AgentManagement = () => {
               <tr>
                 <th>#</th>
                 <th>Agent Name</th>
-                <th>Appointments Booked</th>
+                <th>Appointments</th>
+                <th>Visited</th>
+                <th>Visit Rate</th>
+                <th>Total Spending (৳)</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {paginated.length === 0 && (
                 <tr>
-                  <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
                     No agents found.
                   </td>
                 </tr>
@@ -238,6 +309,17 @@ const AgentManagement = () => {
                     </div>
                   </td>
                   <td>{agent.total || '—'}</td>
+                  <td>{agent.visited || '—'}</td>
+                  <td>
+                    {agent.total > 0
+                      ? <span style={{ fontWeight: 600, color: agent.visited / agent.total >= 0.7 ? '#10b981' : '#f59e0b' }}>
+                          {Math.round((agent.visited / agent.total) * 100)}%
+                        </span>
+                      : '—'}
+                  </td>
+                  <td style={{ fontWeight: 600, color: '#005CB9' }}>
+                    {agent.spending > 0 ? `৳${agent.spending.toLocaleString()}` : '—'}
+                  </td>
                   <td>
                     <button
                       className="btn-icon text-danger"
