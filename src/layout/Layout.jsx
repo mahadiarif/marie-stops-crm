@@ -165,12 +165,6 @@ const Layout = () => {
           )}
         </nav>
 
-        <div className="sidebar-footer">
-          <button className="logout-btn" onClick={handleLogout}>
-            <LogOut size={20} />
-            <span>Logout</span>
-          </button>
-        </div>
       </aside>
       
       <main className="main-content">
@@ -262,6 +256,12 @@ const Layout = () => {
                       </div>
                     </>
                   )}
+                  <div className="menu-divider"></div>
+                  <div className="menu-section">
+                    <button className="menu-item" style={{ color: '#ef4444' }} onClick={() => { setShowProfileMenu(false); handleLogout(); }}>
+                      <LogOut size={16} /> <span>Logout</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
