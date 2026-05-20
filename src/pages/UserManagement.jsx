@@ -90,15 +90,16 @@ const UserManagement = () => {
 
   const handleImpersonate = async (userId) => {
     try {
+      const originalToken = localStorage.getItem('authToken');
       const res = await axiosClient.post(`/auth/impersonate/${userId}`);
-      const { access_token, user_id, username, role, assigned_clinic } = res.data;
+      const { access_token, user_id, username, role, assigned_clinic, agent_name } = res.data;
+      localStorage.setItem('adminToken', originalToken);
       localStorage.setItem('authToken', access_token);
-      // Update auth context by dispatching login event
       window.dispatchEvent(new CustomEvent('crm-impersonate', {
-        detail: { id: user_id, username, role, email: '', assignedClinic: assigned_clinic || null }
+        detail: { id: user_id, username, role, email: '', assignedClinic: assigned_clinic || null, agentName: agent_name || null }
       }));
       await refetchAll();
-      navigate('/clinic-entry');
+      navigate(role === 'clinic' ? '/clinic-entry' : '/');
     } catch (err) {
       alert(err.response?.data?.detail || 'Impersonate failed.');
     }
@@ -318,11 +319,9 @@ const UserManagement = () => {
                   <td>
                     <div className="action-buttons">
                       <button className="btn-icon" title="Edit" onClick={() => openForm(user)}><Edit size={16} /></button>
-                      {user.role === 'clinic' && (
-                        <button className="btn-icon" title="Login as Clinic" onClick={() => handleImpersonate(user.id)} style={{ color: '#005CB9' }}>
-                          <LogIn size={16} />
-                        </button>
-                      )}
+                      <button className="btn-icon" title={`Login as ${user.username}`} onClick={() => handleImpersonate(user.id)} style={{ color: '#005CB9' }}>
+                        <LogIn size={16} />
+                      </button>
                       <button className="btn-icon text-danger" title="Delete" onClick={() => handleDelete(user.id)}><Trash2 size={16} /></button>
                     </div>
                   </td>

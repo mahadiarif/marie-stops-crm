@@ -1,38 +1,26 @@
 import React, { useState } from 'react';
 import { useAppData } from '../context/AppDataContext';
-import { Settings as SettingsIcon, Plus, Trash2, Building, Building2, ClipboardList, Users } from 'lucide-react';
+import { Plus, Trash2, Building2, ClipboardList } from 'lucide-react';
 import './Settings.css';
 
 const Settings = () => {
-  const { 
-    clinics, addClinic, removeClinic, 
+  const {
     ngos, addNgo, removeNgo,
     reasons, addReason, removeReason,
     addedByList, addAddedBy, removeAddedBy,
     enumerators, addEnumerator, removeEnumerator,
     visitStatus, addVisitStatus, removeVisitStatus,
     followupStatus, addFollowupStatus, removeFollowupStatus,
-    agentNames, addAgentName, removeAgentName,
     waiverServices, addWaiverService, removeWaiverService
   } = useAppData();
-  
-  const [newClinic, setNewClinic] = useState('');
+
   const [newNgo, setNewNgo] = useState('');
   const [newReason, setNewReason] = useState('');
   const [newAddedBy, setNewAddedBy] = useState('');
   const [newEnumerator, setNewEnumerator] = useState('');
   const [newVisitStatus, setNewVisitStatus] = useState('');
   const [newFollowupStatus, setNewFollowupStatus] = useState('');
-  const [newAgentName, setNewAgentName] = useState('');
   const [newWaiverService, setNewWaiverService] = useState('');
-
-  const handleAddClinic = (e) => {
-    e.preventDefault();
-    if (newClinic.trim()) {
-      addClinic(newClinic.trim());
-      setNewClinic('');
-    }
-  };
 
   const handleAddNgo = (e) => {
     e.preventDefault();
@@ -67,11 +55,6 @@ const Settings = () => {
     if (newFollowupStatus.trim()) { addFollowupStatus(newFollowupStatus.trim()); setNewFollowupStatus(''); }
   };
 
-  const handleAddAgentName = (e) => {
-    e.preventDefault();
-    if (newAgentName.trim()) { addAgentName(newAgentName.trim()); setNewAgentName(''); }
-  };
-
   const handleAddWaiverService = (e) => {
     e.preventDefault();
     if (newWaiverService.trim()) { addWaiverService(newWaiverService.trim()); setNewWaiverService(''); }
@@ -87,40 +70,6 @@ const Settings = () => {
       </div>
 
       <div className="settings-grid">
-        {/* Clinics Manager */}
-        <div className="card settings-card">
-          <div className="settings-card-header">
-            <Building className="text-primary" size={24} />
-            <h2>Manage Clinics</h2>
-          </div>
-          <div className="settings-card-body">
-            <form onSubmit={handleAddClinic} className="add-form">
-              <input 
-                type="text" 
-                className="form-control" 
-                placeholder="Enter new clinic name..." 
-                value={newClinic}
-                onChange={(e) => setNewClinic(e.target.value)}
-              />
-              <button type="submit" className="btn btn-primary" disabled={!newClinic.trim()}>
-                <Plus size={18} /> Add
-              </button>
-            </form>
-            
-            <ul className="settings-list">
-              {clinics.map((clinic, index) => (
-                <li key={index} className="settings-list-item">
-                  <span>{clinic}</span>
-                  <button onClick={() => removeClinic(clinic)} className="btn-icon text-danger" title="Remove">
-                    <Trash2 size={16} />
-                  </button>
-                </li>
-              ))}
-              {clinics.length === 0 && <li className="empty-text">No clinics found.</li>}
-            </ul>
-          </div>
-        </div>
-
         {/* NGOs Manager */}
         <div className="card settings-card">
           <div className="settings-card-header">
@@ -173,28 +122,6 @@ const Settings = () => {
                 </li>
               ))}
               {reasons.length === 0 && <li className="empty-text">No reasons found.</li>}
-            </ul>
-          </div>
-        </div>
-
-        {/* Agent Names Manager */}
-        <div className="card settings-card">
-          <div className="settings-card-header">
-            <Users size={24} className="text-primary" />
-            <h2>Agent Names</h2>
-          </div>
-          <div className="settings-card-body">
-            <form onSubmit={handleAddAgentName} className="add-form">
-              <input type="text" className="form-control" placeholder="Enter agent name..." value={newAgentName} onChange={(e) => setNewAgentName(e.target.value)} />
-              <button type="submit" className="btn btn-primary" disabled={!newAgentName.trim()}><Plus size={18} /> Add</button>
-            </form>
-            <ul className="settings-list">
-              {agentNames.map((item, index) => (
-                <li key={index} className="settings-list-item">
-                  <span>{item}</span>
-                  <button onClick={() => removeAgentName(item)} className="btn-icon text-danger" title="Remove"><Trash2 size={16} /></button>
-                </li>
-              ))}
             </ul>
           </div>
         </div>

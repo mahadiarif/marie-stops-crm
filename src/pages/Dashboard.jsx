@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppData } from '../context/AppDataContext';
 import { useAuth } from '../context/AuthContext';
-import { Users, Calendar, PhoneIncoming, TrendingUp, Building2 } from 'lucide-react';
+import { Users, Calendar, PhoneIncoming, TrendingUp, Building2 } from 'lucide-react'; // Building2 used in clinic stats
 import './Dashboard.css';
 
 const DASH_PAGE_SIZE = 10;
@@ -85,11 +85,6 @@ const Dashboard = () => {
         {role !== 'clinic' && (
           <button className="btn btn-primary" onClick={() => navigate('/appointments/new')}>
             <Calendar size={18} /> New Appointment
-          </button>
-        )}
-        {role === 'clinic' && (
-          <button className="btn btn-primary" onClick={() => navigate('/clinic-entry')}>
-            <Building2 size={18} /> Clinic Entry
           </button>
         )}
       </div>

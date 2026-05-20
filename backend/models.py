@@ -122,5 +122,6 @@ class User(Base):
     role = Column(Enum(RoleEnum), default=RoleEnum.staff)
     is_active = Column(Boolean, default=True)
     assigned_clinic = Column(String, nullable=True)
+    agent_name = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)

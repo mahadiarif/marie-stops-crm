@@ -1,0 +1,134 @@
+.role-mgmt-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.roles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.role-card {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.role-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 1rem 1.25rem;
+}
+
+.role-icon-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.role-name {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.role-locked-badge {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.role-perms-body {
+  padding: 0.5rem 0;
+}
+
+.perm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.1s;
+}
+
+.perm-row:last-child {
+  border-bottom: none;
+}
+
+.perm-row:hover {
+  background: #f8fafc;
+}
+
+.perm-row-label {
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+
+.perm-section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 0.5rem 1.25rem 0.25rem;
+  background: #f8fafc;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.perm-section-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+  padding: 0.5rem 1.25rem;
+}
+
+.perm-section-btn:hover {
+  background: #f1f5f9;
+}
+
+.perm-col-module {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #94a3b8;
+  padding: 0.35rem 1.25rem 0.1rem;
+  letter-spacing: 0.05em;
+}
+
+.perm-row-indent {
+  padding-left: 1.75rem;
+}
+
+.module-row-wrap {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.module-row-wrap:last-child {
+  border-bottom: none;
+}
+
+.module-label-btn {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  flex: 1;
+  text-align: left;
+}
+
+.col-expand {
+  background: #f8fafc;
+  border-top: 1px solid #f1f5f9;
+}

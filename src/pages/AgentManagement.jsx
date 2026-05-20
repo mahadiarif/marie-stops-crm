@@ -47,6 +47,7 @@ const AgentManagement = () => {
           password: agentForm.password.trim(),
           email: agentForm.email.trim() || `${agentForm.username.trim()}@mariestopes.org`,
           role: 'staff',
+          agent_name: name,
         });
       }
       resetForm();

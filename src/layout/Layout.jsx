@@ -16,14 +16,32 @@ import {
   HelpCircle,
   FileText,
   Building2,
-  UserCheck
+  UserCheck,
+  ArrowLeftCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../context/PermissionsContext';
 import './Layout.css';
+
+const NavGroup = ({ label, children, defaultOpen = false }) => {
+  const [open, setOpen] = useState(defaultOpen);
+  const hasChildren = Array.isArray(children) ? children.some(Boolean) : !!children;
+  if (!hasChildren) return null;
+  return (
+    <>
+      <button className="nav-group-btn" onClick={() => setOpen(o => !o)}>
+        <span>{label}</span>
+        <ChevronDown size={13} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+      </button>
+      {open && <div className="nav-group-items">{children}</div>}
+    </>
+  );
+};
 
 const Layout = () => {
   const navigate = useNavigate();
-  const { user, logout, hasRole } = useAuth();
+  const { user, logout, hasRole, isImpersonating, returnToAdmin } = useAuth();
+  const { can } = usePermissions();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
@@ -91,76 +109,73 @@ const Layout = () => {
             <LayoutDashboard size={20} />
             <span>Dashboard</span>
           </NavLink>
-          
-          <div className="nav-group">RECORDS</div>
 
-          <NavLink to="/appointments" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-            <UserPlus size={20} />
-            <span>Appointments</span>
-          </NavLink>
+          <NavGroup label="RECORDS" defaultOpen={true}>
+            {can('appointments') && (
+              <NavLink to="/appointments" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                <UserPlus size={20} /><span>Appointments</span>
+              </NavLink>
+            )}
+            {can('call_logs') && (
+              <NavLink to="/call-logs" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                <PhoneCall size={20} /><span>Call Logs</span>
+              </NavLink>
+            )}
+            {can('clients') && (
+              <NavLink to="/clients" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                <Users size={20} /><span>Clients</span>
+              </NavLink>
+            )}
+          </NavGroup>
 
-          {hasRole(['admin', 'manager', 'staff']) && (
-            <NavLink to="/call-logs" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-              <PhoneCall size={20} />
-              <span>Call Logs</span>
-            </NavLink>
-          )}
+          <NavGroup label="WAIVER" defaultOpen={true}>
+            {can('waivers') && (
+              <NavLink to="/waiver" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                <ClipboardList size={20} /><span>Waiver List</span>
+              </NavLink>
+            )}
+            {can('clinic_data') && (
+              <NavLink to="/clinic-entry" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                <Building2 size={20} /><span>Clinic List</span>
+              </NavLink>
+            )}
+          </NavGroup>
 
-          {hasRole(['admin', 'manager', 'staff']) && (
-            <NavLink to="/clients" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-              <Users size={20} />
-              <span>Clients</span>
-            </NavLink>
-          )}
-
-          <div className="nav-group">WAIVER</div>
-
-          {hasRole(['admin', 'manager', 'clinic']) && (
-            <NavLink to="/waiver" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-              <ClipboardList size={20} />
-              <span>Waiver List</span>
-            </NavLink>
-          )}
-
-          {hasRole(['admin', 'manager', 'clinic']) && (
-            <NavLink to="/clinic-entry" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-              <Building2 size={20} />
-              <span>Clinic List</span>
-            </NavLink>
-          )}
-
-          {hasRole(['admin', 'manager']) && (
-            <>
-              <div className="nav-group">ANALYTICS</div>
+          {can('reports') && (
+            <NavGroup label="ANALYTICS" defaultOpen={true}>
               <NavLink to="/reports" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                <FileText size={20} />
-                <span>Reports</span>
+                <FileText size={20} /><span>Reports</span>
               </NavLink>
-            </>
+            </NavGroup>
           )}
 
           {hasRole('admin') && (
-            <>
-              <div className="nav-group">SYSTEM</div>
+            <NavGroup label="SYSTEM" defaultOpen={true}>
               <NavLink to="/users" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                <Shield size={20} />
-                <span>User Management</span>
+                <Shield size={20} /><span>User Management</span>
               </NavLink>
-            </>
+              <NavLink to="/roles" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                <UserCheck size={20} /><span>Role Management</span>
+              </NavLink>
+              {can('agent_management') && (
+                <NavLink to="/agents" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                  <UserCheck size={20} /><span>Agent Management</span>
+                </NavLink>
+              )}
+              {can('settings') && (
+                <NavLink to="/settings" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                  <Settings size={20} /><span>Settings</span>
+                </NavLink>
+              )}
+            </NavGroup>
           )}
 
-          {hasRole(['admin', 'manager']) && (
-            <NavLink to="/agents" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-              <UserCheck size={20} />
-              <span>Agent Management</span>
-            </NavLink>
-          )}
-
-          {hasRole('admin') && (
-            <NavLink to="/settings" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-              <Settings size={20} />
-              <span>Settings</span>
-            </NavLink>
+          {!hasRole('admin') && can('agent_management') && (
+            <NavGroup label="SYSTEM" defaultOpen={true}>
+              <NavLink to="/agents" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                <UserCheck size={20} /><span>Agent Management</span>
+              </NavLink>
+            </NavGroup>
           )}
         </nav>
 
@@ -250,15 +265,17 @@ const Layout = () => {
                       <Shield size={16} /> <span>Security</span>
                     </button>
                   </div>
-                  <div className="menu-divider"></div>
-                  <div className="menu-section">
-                    <button className="menu-item" onClick={() => setShowProfileMenu(false)}>
-                      <HelpCircle size={16} /> <span>Help Center</span>
-                    </button>
-                    <button className="menu-item text-danger" onClick={handleLogout}>
-                      <LogOut size={16} /> <span>Logout</span>
-                    </button>
-                  </div>
+                  {isImpersonating && (
+                    <>
+                      <div className="menu-divider"></div>
+                      <div className="menu-section">
+                        <button className="menu-item" style={{ color: '#f59e0b', fontWeight: 600 }}
+                          onClick={async () => { setShowProfileMenu(false); await returnToAdmin(); navigate('/'); }}>
+                          <ArrowLeftCircle size={16} /> <span>Back to Users</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>

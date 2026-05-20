@@ -8,6 +8,7 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isImpersonating, setIsImpersonating] = useState(!!localStorage.getItem('adminToken'));
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -24,6 +25,7 @@ export function AuthProvider({ children }) {
     const handleImpersonate = (e) => {
       setToken(localStorage.getItem('authToken'));
       setUser(e.detail);
+      setIsImpersonating(true);
     };
     window.addEventListener('crm-impersonate', handleImpersonate);
     return () => window.removeEventListener('crm-impersonate', handleImpersonate);
@@ -42,7 +44,8 @@ export function AuthProvider({ children }) {
         username: d.username,
         role: d.role,
         email: d.email || '',
-        assignedClinic: d.assigned_clinic || null
+        assignedClinic: d.assigned_clinic || null,
+        agentName: d.agent_name || null
       });
       setError(null);
     } catch (err) {
@@ -64,7 +67,7 @@ export function AuthProvider({ children }) {
         password
       });
 
-      const { access_token, user_id, username: uname, role, assigned_clinic } = response.data;
+      const { access_token, user_id, username: uname, role, assigned_clinic, agent_name } = response.data;
 
       setToken(access_token);
       setUser({
@@ -72,7 +75,8 @@ export function AuthProvider({ children }) {
         username: uname,
         role,
         email: '',
-        assignedClinic: assigned_clinic || null
+        assignedClinic: assigned_clinic || null,
+        agentName: agent_name || null
       });
 
       localStorage.setItem('authToken', access_token);
@@ -91,7 +95,20 @@ export function AuthProvider({ children }) {
     setUser(null);
     setToken(null);
     setError(null);
+    setIsImpersonating(false);
     localStorage.removeItem('authToken');
+    localStorage.removeItem('adminToken');
+  };
+
+  const returnToAdmin = async () => {
+    const adminToken = localStorage.getItem('adminToken');
+    if (!adminToken) return;
+    localStorage.setItem('authToken', adminToken);
+    localStorage.removeItem('adminToken');
+    setIsImpersonating(false);
+    setToken(adminToken);
+    await verifyToken(adminToken);
+    window.dispatchEvent(new Event('crm-login'));
   };
 
   const isAuthenticated = !!token && !!user;
@@ -112,6 +129,8 @@ export function AuthProvider({ children }) {
         error,
         login,
         logout,
+        returnToAdmin,
+        isImpersonating,
         isAuthenticated,
         hasRole
       }}

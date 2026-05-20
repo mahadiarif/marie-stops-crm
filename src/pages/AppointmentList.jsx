@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
 import { useAppData } from '../context/AppDataContext';
 import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../context/PermissionsContext';
 import {
   Calendar,
   Search,
@@ -32,6 +33,7 @@ import './AppointmentList.css';
 const AppointmentList = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { getColumns } = usePermissions();
   const isClinicRole = user?.role === 'clinic';
   const canDelete = user?.role === 'admin' || user?.role === 'manager';
   const { clinics, followupStatus } = useAppData();
@@ -51,6 +53,14 @@ const AppointmentList = () => {
     () => ALL_COLUMNS.reduce((acc, c) => ({ ...acc, [c.key]: true }), {})
   );
   const PAGE_SIZE = 10;
+
+  // Apply role-based column defaults from permissions
+  useEffect(() => {
+    const roleCols = getColumns('appointments');
+    if (Object.keys(roleCols).length > 0) {
+      setVisibleCols(prev => ({ ...prev, ...roleCols }));
+    }
+  }, [user?.role]);
 
   const toggleCol = (key) => setVisibleCols(prev => ({ ...prev, [key]: !prev[key] }));
   const col = (key) => visibleCols[key];

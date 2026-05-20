@@ -5,6 +5,7 @@ from typing import List
 from pydantic import BaseModel
 import models, database, auth
 import datetime
+import json
 
 app = FastAPI(title="Marie Stopes CRM API")
 
@@ -19,6 +20,7 @@ class RegisterRequest(BaseModel):
     password: str
     role: str = "staff"
     assigned_clinic: str | None = None
+    agent_name: str | None = None
 
 class LoginResponse(BaseModel):
     access_token: str
@@ -26,6 +28,7 @@ class LoginResponse(BaseModel):
     username: str
     role: str
     assigned_clinic: str | None = None
+    agent_name: str | None = None
 
 class UserResponse(BaseModel):
     id: int
@@ -34,6 +37,7 @@ class UserResponse(BaseModel):
     role: str
     is_active: bool
     assigned_clinic: str | None = None
+    agent_name: str | None = None
 
     class Config:
         from_attributes = True
@@ -57,6 +61,7 @@ def run_migrations():
         for table, col in [
             ("appointments", "created_by_user_id INTEGER"),
             ("call_logs",    "created_by_user_id INTEGER"),
+            ("users",        "agent_name TEXT"),
         ]:
             try:
                 conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col}"))
@@ -91,7 +96,8 @@ def login(credentials: LoginRequest, db: Session = Depends(database.get_db)):
         "user_id": user.id,
         "username": user.username,
         "role": user.role,
-        "assigned_clinic": user.assigned_clinic
+        "assigned_clinic": user.assigned_clinic,
+        "agent_name": user.agent_name
     }
 
 @app.post("/auth/register", response_model=UserResponse)
@@ -125,7 +131,8 @@ def register(
         email=req.email,
         password_hash=auth.hash_password(req.password),
         role=req.role,
-        assigned_clinic=req.assigned_clinic
+        assigned_clinic=req.assigned_clinic,
+        agent_name=req.agent_name
     )
     db.add(new_user)
     db.commit()
@@ -229,6 +236,50 @@ def delete_setting(
     db.commit()
     return {"message": "Setting deleted"}
 
+_ALL_APPT_COLS   = {"id": True, "client": True, "clinic": True, "reason": True, "agent": True, "date": True, "reconf": True, "visitStatus": True, "spending": True, "followup": True}
+_ALL_CALL_COLS   = {"callerName": True, "callerType": True, "reason": True, "district": True, "duration": True, "status": True, "date": True}
+_ALL_CLIENT_COLS = {"name": True, "contact": True, "age": True, "registered": True}
+
+DEFAULT_ROLE_PERMISSIONS = {
+    "admin":   {"appointments": True, "call_logs": True, "clients": True, "clinic_data": True, "waivers": True, "reports": True, "user_management": True, "agent_management": True, "settings": True,
+                "columns": {"appointments": _ALL_APPT_COLS, "call_logs": _ALL_CALL_COLS, "clients": _ALL_CLIENT_COLS}},
+    "manager": {"appointments": True, "call_logs": True, "clients": True, "clinic_data": True, "waivers": True, "reports": True, "user_management": False, "agent_management": True, "settings": False,
+                "columns": {"appointments": _ALL_APPT_COLS, "call_logs": _ALL_CALL_COLS, "clients": _ALL_CLIENT_COLS}},
+    "staff":   {"appointments": True, "call_logs": True, "clients": True, "clinic_data": False, "waivers": False, "reports": False, "user_management": False, "agent_management": False, "settings": False,
+                "columns": {"appointments": {**_ALL_APPT_COLS, "spending": False, "visitStatus": False}, "call_logs": _ALL_CALL_COLS, "clients": _ALL_CLIENT_COLS}},
+    "clinic":  {"appointments": True, "call_logs": False, "clients": False, "clinic_data": True, "waivers": True, "reports": False, "user_management": False, "agent_management": False, "settings": False,
+                "columns": {"appointments": {**_ALL_APPT_COLS, "agent": False, "reconf": False, "followup": False}, "call_logs": _ALL_CALL_COLS, "clients": _ALL_CLIENT_COLS}},
+}
+
+ROLE_PERM_KEY = "__role_permissions__"
+
+@app.get("/role-permissions")
+def get_role_permissions(
+    _current_user: models.User = Depends(auth.verify_token),
+    db: Session = Depends(database.get_db)
+):
+    row = db.query(models.Setting).filter(models.Setting.category == ROLE_PERM_KEY).first()
+    if row:
+        return json.loads(row.value)
+    return DEFAULT_ROLE_PERMISSIONS
+
+@app.put("/role-permissions")
+def update_role_permissions(
+    payload: dict,
+    current_user: models.User = Depends(auth.require_role("admin")),
+    db: Session = Depends(database.get_db)
+):
+    # admin permissions are immutable
+    payload["admin"] = DEFAULT_ROLE_PERMISSIONS["admin"]
+    row = db.query(models.Setting).filter(models.Setting.category == ROLE_PERM_KEY).first()
+    if row:
+        row.value = json.dumps(payload)
+    else:
+        row = models.Setting(category=ROLE_PERM_KEY, value=json.dumps(payload))
+        db.add(row)
+    db.commit()
+    return payload
+
 # APPOINTMENTS ENDPOINTS
 @app.get("/appointments")
 def get_appointments(
@@ -274,6 +325,26 @@ def get_appointments(
             "spending_amount": a.spending_amount or 0
         })
     return result
+
+@app.get("/appointments/conflict-check")
+def conflict_check(
+    phone: str,
+    exclude_id: int = None,
+    _current_user: models.User = Depends(auth.verify_token),
+    db: Session = Depends(database.get_db)
+):
+    query = db.query(models.Appointment).join(
+        models.Client, models.Appointment.client_id == models.Client.id
+    ).filter(
+        models.Client.phone == phone,
+        models.Appointment.visit_status_clinic != 'Visited'
+    )
+    if exclude_id:
+        query = query.filter(models.Appointment.id != exclude_id)
+    conflict = query.first()
+    if conflict:
+        return {"conflict": True, "clinic": conflict.clinic, "visit_date": str(conflict.visit_date)}
+    return {"conflict": False}
 
 def _validate_appointment_refs(appointment_data: dict, db: Session):
     clinic = appointment_data.get("clinic")
@@ -692,8 +763,8 @@ def impersonate_user(
     target = db.query(models.User).filter(models.User.id == user_id).first()
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
-    if target.role != "clinic":
-        raise HTTPException(status_code=403, detail="Can only impersonate clinic users")
+    if target.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot impersonate yourself")
     token = auth.create_access_token(data={"sub": target.username})
     return {
         "access_token": token,
@@ -701,4 +772,5 @@ def impersonate_user(
         "username": target.username,
         "role": target.role,
         "assigned_clinic": target.assigned_clinic,
+        "agent_name": target.agent_name,
     }

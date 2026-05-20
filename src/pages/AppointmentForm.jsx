@@ -102,6 +102,9 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
           const year = new Date().getFullYear();
           const randomCounter = Math.floor(10000 + Math.random() * 90000);
           setRefId(`REF-${year}-${randomCounter}`);
+          if (isStaffRole && user?.agentName) {
+            setSelectedAgent(user.agentName);
+          }
         }
 
         const generateSmsCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -146,17 +149,12 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
         return;
       }
 
-      // Conflict check for staff on new appointments
+      // Conflict check for staff on new appointments (system-wide)
       if (isStaffRole && !editId) {
-        const allAppts = await axiosClient.get('/appointments');
-        const conflict = allAppts.data.find(a =>
-          a.client_phone === phone &&
-          a.visit_status_clinic !== 'Visited' &&
-          a.id !== parseInt(editId)
-        );
-        if (conflict) {
+        const res = await axiosClient.get('/appointments/conflict-check', { params: { phone } });
+        if (res.data.conflict) {
           const proceed = window.confirm(
-            `Warning: This client already has an active appointment at ${conflict.clinic} on ${new Date(conflict.visit_date).toLocaleDateString()}.\n\nProceed anyway?`
+            `Warning: This client already has an active appointment at ${res.data.clinic} on ${new Date(res.data.visit_date).toLocaleDateString()}.\n\nProceed anyway?`
           );
           if (!proceed) return;
         }
@@ -300,11 +298,16 @@ export function AppointmentFormContent({ editId, clientId, isViewOnly, onClose, 
           </div>
           <div className="form-group">
             <label className="form-label">Agent Name <span>*</span></label>
-            <select className="form-control" value={selectedAgent}
-              onChange={(e) => setSelectedAgent(e.target.value)} disabled={isViewOnly || isClinicRole}>
-              <option value="">-- Select Agent --</option>
-              {agentNames.map((a, i) => <option key={i} value={a}>{a}</option>)}
-            </select>
+            {isStaffRole && user?.agentName ? (
+              <input type="text" className="form-control" value={selectedAgent} readOnly
+                style={{ backgroundColor: '#f1f5f9', color: '#475569' }} />
+            ) : (
+              <select className="form-control" value={selectedAgent}
+                onChange={(e) => setSelectedAgent(e.target.value)} disabled={isViewOnly || isClinicRole}>
+                <option value="">-- Select Agent --</option>
+                {agentNames.map((a, i) => <option key={i} value={a}>{a}</option>)}
+              </select>
+            )}
           </div>
           <div className="form-group">
             <label className="form-label">Referral Fee Received</label>
