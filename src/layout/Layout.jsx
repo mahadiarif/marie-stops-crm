@@ -21,17 +21,15 @@ import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
 import './Layout.css';
 
-const NavGroup = ({ label, children, defaultOpen = false }) => {
-  const [open, setOpen] = useState(defaultOpen);
+const NavGroup = ({ label, children }) => {
   const hasChildren = Array.isArray(children) ? children.some(Boolean) : !!children;
   if (!hasChildren) return null;
   return (
     <>
-      <button className="nav-group-btn" onClick={() => setOpen(o => !o)}>
+      <div className="nav-group-btn">
         <span>{label}</span>
-        <ChevronDown size={13} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-      </button>
-      {open && <div className="nav-group-items">{children}</div>}
+      </div>
+      <div className="nav-group-items">{children}</div>
     </>
   );
 };
